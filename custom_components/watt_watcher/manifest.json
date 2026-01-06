@@ -1,0 +1,13 @@
+{
+  "domain": "watt_watcher",
+  "name": "Watt Watcher",
+  "codeowners": ["@Korkuttum"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/Korkuttum/watt_watcher",
+  "homeassistant": "2023.8.0",
+  "iot_class": "local_polling",
+  "issue_tracker": "https://github.com/Korkuttum/watt_watcher/issues",
+  "requirements": [],
+  "version": "0.1.0"
+}
