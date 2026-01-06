@@ -23,7 +23,7 @@ DEFAULT_NAME = "Appliance"
 DEFAULT_SCAN_INTERVAL = 10  # seconds
 DEFAULT_DEVICE_TYPE = "custom"
 DEFAULT_ACTIVE_DELAY = 60    # 1 minute
-DEFAULT_FINISHED_DELAY = 300  # 5 minutes
+DEFAULT_FINISHED_DELAY = 60  # 1 minutes
 DEFAULT_IDLE_DELAY = 3600    # 1 hour
 
 # Comparison types
