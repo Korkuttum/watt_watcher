@@ -92,13 +92,13 @@ class WattWatcherStateSensor(WattWatcherEntity, SensorEntity):
         timing = self.coordinator.data.get("timing_settings", {})
         states_config = self.coordinator.data.get("states_config", [])
         
-        # Format states configuration for display
+        # Format states configuration for display - DÜZELTME BURADA
         formatted_states = []
         for state in states_config:
             formatted_states.append({
                 "name": state.get("name", ""),
-                "min_watt": state.get("min_watt", 0),
-                "max_watt": state.get("max_watt", 0),
+                "threshold": state.get("threshold", 0),  # min_watt yerine threshold
+                "comparison": state.get("comparison", "greater"),  # karşılaştırma tipi
                 "icon": state.get("icon", "mdi:circle")
             })
         
@@ -108,7 +108,7 @@ class WattWatcherStateSensor(WattWatcherEntity, SensorEntity):
             "active_delay": timing.get("active_delay", 60),
             "finished_delay": timing.get("finished_delay", 300),
             "idle_delay": timing.get("idle_delay", 3600),
-            "configured_states": formatted_states,
+            "configured_states": formatted_states,  # Artık doğru alanları içeriyor
         }
 
 
