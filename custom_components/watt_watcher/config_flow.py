@@ -248,7 +248,7 @@ class WattWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_FINISHED_DELAY, default=DEFAULT_FINISHED_DELAY): 
                 vol.All(vol.Coerce(int), vol.Range(min=60, max=1800)),
             vol.Required(CONF_IDLE_DELAY, default=DEFAULT_IDLE_DELAY): 
-                vol.All(vol.Coerce(int), vol.Range(min=300, max=7200)),
+                vol.All(vol.Coerce(int), vol.Range(min=60, max=7200)),
             vol.Optional("scan_interval", default=10): 
                 vol.All(vol.Coerce(int), vol.Range(min=5, max=60)),
         })
@@ -464,7 +464,7 @@ class WattWatcherOptionsFlow(config_entries.OptionsFlow):
             vol.Required(CONF_FINISHED_DELAY, default=data.get(CONF_FINISHED_DELAY, DEFAULT_FINISHED_DELAY)): 
                 vol.All(vol.Coerce(int), vol.Range(min=60, max=1800)),
             vol.Required(CONF_IDLE_DELAY, default=data.get(CONF_IDLE_DELAY, DEFAULT_IDLE_DELAY)): 
-                vol.All(vol.Coerce(int), vol.Range(min=300, max=7200)),
+                vol.All(vol.Coerce(int), vol.Range(min=60, max=7200)),
             vol.Optional("scan_interval", default=data.get("scan_interval", 10)): 
                 vol.All(vol.Coerce(int), vol.Range(min=5, max=60)),
         })
