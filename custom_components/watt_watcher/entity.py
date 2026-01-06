@@ -22,8 +22,8 @@ class WattWatcherEntity(CoordinatorEntity[WattWatcherCoordinator], Entity):
             identifiers={(DOMAIN, entry.entry_id)},
             name=coordinator.config.get("name", "Appliance"),
             manufacturer="Watt Watcher",
-            model=coordinator.config.get("device_type", "custom").title(),
-            sw_version="0.1.0",
+            model="Power Monitor",
+            sw_version="1.0.0",
         )
     
     @property
@@ -31,5 +31,5 @@ class WattWatcherEntity(CoordinatorEntity[WattWatcherCoordinator], Entity):
         """Return True if entity is available."""
         return (
             super().available 
-            and self.coordinator.data.get("state") != "error"
+            and self.coordinator.data.get("smart_state") != "error"
         )
