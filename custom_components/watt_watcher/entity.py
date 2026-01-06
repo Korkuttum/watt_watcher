@@ -29,7 +29,8 @@ class WattWatcherEntity(CoordinatorEntity[WattWatcherCoordinator], Entity):
     @property
     def available(self) -> bool:
         """Return True if entity is available."""
+        # DÜZELTME: "smart_state" yerine "current_state" kullan
         return (
             super().available 
-            and self.coordinator.data.get("smart_state") != "error"
+            and self.coordinator.data.get("current_state") != "error"
         )
