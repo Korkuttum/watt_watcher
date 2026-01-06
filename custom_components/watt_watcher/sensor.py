@@ -14,9 +14,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfPower, UnitOfEnergy, UnitOfTime
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.restore_state import RestoreEntity
 
-from .const import DOMAIN, STATE_OFF, STATE_RUNNING, STATE_FINISHED
+from .const import DOMAIN
 from .coordinator import WattWatcherCoordinator
 from .entity import WattWatcherEntity
 
@@ -31,42 +30,19 @@ async def async_setup_entry(
     """Set up Watt Watcher sensors based on a config entry."""
     coordinator = hass.data[DOMAIN][entry.entry_id]
     
+    # Get configured states for options
+    states_config = coordinator.data.get("states_config", [])
+    state_options = [state["name"] for state in states_config]
+    
     # Create sensor entities
     entities = [
-        WattWatcherStatusSensor(coordinator, entry),
         WattWatcherPowerSensor(coordinator, entry),
-        WattWatcherStateDurationSensor(coordinator, entry),
+        WattWatcherStateSensor(coordinator, entry, state_options),
         WattWatcherCycleDurationSensor(coordinator, entry),
         WattWatcherEnergySensor(coordinator, entry),
     ]
     
     async_add_entities(entities)
-
-
-class WattWatcherStatusSensor(WattWatcherEntity, SensorEntity):
-    """Status sensor for Watt Watcher."""
-    
-    _attr_icon = "mdi:state-machine"
-    
-    def __init__(self, coordinator: WattWatcherCoordinator, entry: ConfigEntry) -> None:
-        """Initialize the sensor."""
-        super().__init__(coordinator, entry)
-        self._attr_unique_id = f"{entry.entry_id}_status"
-        self._attr_name = f"{coordinator.config.get('name')} Status"
-        self._attr_device_class = SensorDeviceClass.ENUM
-        self._attr_options = [
-            "off", 
-            "standby", 
-            "running", 
-            "finished", 
-            "error", 
-            "unknown"
-        ]
-
-    @property
-    def native_value(self) -> str:
-        """Return the state of the sensor."""
-        return self.coordinator.data.get("state", "unknown")
 
 
 class WattWatcherPowerSensor(WattWatcherEntity, SensorEntity):
@@ -86,58 +62,58 @@ class WattWatcherPowerSensor(WattWatcherEntity, SensorEntity):
     @property
     def native_value(self) -> float:
         """Return the current power consumption."""
-        return round(self.coordinator.data.get("power", 0.0), 1)
-    
-    @property
-    def suggested_display_precision(self) -> int:
-        """Return the suggested number of decimal places."""
-        return 1
+        return round(self.coordinator.data.get("current_power", 0.0), 1)
 
 
-class WattWatcherStateDurationSensor(WattWatcherEntity, SensorEntity):
-    """Current state duration sensor."""
+class WattWatcherStateSensor(WattWatcherEntity, SensorEntity):
+    """State sensor with dynamic icon."""
     
-    _attr_icon = "mdi:timer"
-    _attr_device_class = SensorDeviceClass.DURATION
-    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
-    
-    def __init__(self, coordinator: WattWatcherCoordinator, entry: ConfigEntry) -> None:
+    def __init__(self, coordinator: WattWatcherCoordinator, entry: ConfigEntry, state_options: list) -> None:
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
-        self._attr_unique_id = f"{entry.entry_id}_state_duration"
-        self._attr_name = f"{coordinator.config.get('name')} State Duration"
+        self._attr_unique_id = f"{entry.entry_id}_state"
+        self._attr_name = f"{coordinator.config.get('name')} Status"
+        self._attr_device_class = SensorDeviceClass.ENUM
+        self._attr_options = state_options
 
     @property
-    def native_value(self) -> int:
-        """Return the duration in current state."""
-        return self.coordinator.data.get("state_duration", 0)
+    def native_value(self) -> str:
+        """Return the current state."""
+        return self.coordinator.data.get("current_state", "idle")
+    
+    @property
+    def icon(self) -> str:
+        """Return dynamic icon based on current state."""
+        return self.coordinator.data.get("current_icon", "mdi:circle")
     
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional attributes."""
-        duration = self.coordinator.data.get("state_duration", 0)
+        timing = self.coordinator.data.get("timing_settings", {})
+        states_config = self.coordinator.data.get("states_config", [])
+        
+        # Format states configuration for display
+        formatted_states = []
+        for state in states_config:
+            formatted_states.append({
+                "name": state.get("name", ""),
+                "min_watt": state.get("min_watt", 0),
+                "max_watt": state.get("max_watt", 0),
+                "icon": state.get("icon", "mdi:circle")
+            })
+        
         return {
-            "hours": duration // 3600,
-            "minutes": (duration % 3600) // 60,
-            "seconds": duration % 60,
-            "human_readable": self._format_duration(duration)
+            "current_power": self.coordinator.data.get("current_power", 0.0),
+            "state_duration": self.coordinator.data.get("state_duration", 0),
+            "active_delay": timing.get("active_delay", 60),
+            "finished_delay": timing.get("finished_delay", 300),
+            "idle_delay": timing.get("idle_delay", 3600),
+            "configured_states": formatted_states,
         }
-    
-    def _format_duration(self, seconds: int) -> str:
-        """Format duration as human readable string."""
-        if seconds < 60:
-            return f"{seconds}秒"
-        elif seconds < 3600:
-            minutes = seconds // 60
-            return f"{minutes}分{seconds % 60}秒"
-        else:
-            hours = seconds // 3600
-            minutes = (seconds % 3600) // 60
-            return f"{hours}時間{minutes}分"
 
 
-class WattWatcherCycleDurationSensor(WattWatcherEntity, SensorEntity, RestoreEntity):
-    """Cycle duration sensor with persistence."""
+class WattWatcherCycleDurationSensor(WattWatcherEntity, SensorEntity):
+    """Cycle duration sensor."""
     
     _attr_icon = "mdi:progress-clock"
     _attr_device_class = SensorDeviceClass.DURATION
@@ -148,90 +124,44 @@ class WattWatcherCycleDurationSensor(WattWatcherEntity, SensorEntity, RestoreEnt
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_cycle_duration"
         self._attr_name = f"{coordinator.config.get('name')} Cycle Duration"
-        self._cycle_start_time = None
-        self._last_cycle_duration = 0
-        self._total_cycles = 0
-        
-    async def async_added_to_hass(self) -> None:
-        """When entity is added to hass."""
-        await super().async_added_to_hass()
-        
-        # Restore previous state if available
-        if (last_state := await self.async_get_last_state()) is not None:
-            if "total_cycles" in last_state.attributes:
-                self._total_cycles = int(last_state.attributes["total_cycles"])
-            if "last_cycle_duration" in last_state.attributes:
-                self._last_cycle_duration = int(last_state.attributes["last_cycle_duration"])
-        
-        # Listen for state changes to track cycles
-        self.async_on_remove(
-            self.coordinator.async_add_listener(self._handle_coordinator_update)
-        )
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        data = self.coordinator.data
-        current_state = data.get("state", "unknown")
-        
-        # Track cycle start/end
-        if current_state == STATE_RUNNING:
-            if self._cycle_start_time is None:
-                # New cycle started
-                self._cycle_start_time = datetime.now()
-        elif self._cycle_start_time is not None:
-            if current_state in [STATE_FINISHED, STATE_OFF]:
-                # Cycle ended
-                cycle_duration = int((datetime.now() - self._cycle_start_time).total_seconds())
-                self._last_cycle_duration = cycle_duration
-                self._total_cycles += 1
-                self._cycle_start_time = None
-        
-        self.async_write_ha_state()
 
     @property
     def native_value(self) -> int:
         """Return current cycle duration."""
-        if self._cycle_start_time:
-            return int((datetime.now() - self._cycle_start_time).total_seconds())
-        return 0
-
+        return self.coordinator.data.get("cycle_duration", 0)
+    
+    @property
+    def available(self) -> bool:
+        """Only available when device is not idle."""
+        return (
+            super().available 
+            and self.coordinator.data.get("current_state") != "idle"
+        )
+    
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional attributes."""
+        duration = self.native_value
+        hours = duration // 3600
+        minutes = (duration % 3600) // 60
+        seconds = duration % 60
+        
         return {
-            "last_cycle_duration": self._last_cycle_duration,
-            "total_cycles": self._total_cycles,
-            "cycle_start_time": self._cycle_start_time.isoformat() if self._cycle_start_time else None,
-            "current_cycle_human_readable": self._format_duration(self.native_value),
-            "last_cycle_human_readable": self._format_duration(self._last_cycle_duration)
+            "hours": hours,
+            "minutes": minutes,
+            "seconds": seconds,
+            "human_readable": f"{hours}h {minutes}m {seconds}s",
+            "current_state": self.coordinator.data.get("current_state", "idle"),
         }
-    
-    def _format_duration(self, seconds: int) -> str:
-        """Format duration as human readable string."""
-        if seconds == 0:
-            return "0秒"
-        
-        hours = seconds // 3600
-        minutes = (seconds % 3600) // 60
-        secs = seconds % 60
-        
-        if hours > 0:
-            return f"{hours}時間{minutes}分{secs}秒"
-        elif minutes > 0:
-            return f"{minutes}分{secs}秒"
-        else:
-            return f"{secs}秒"
 
 
 class WattWatcherEnergySensor(WattWatcherEntity, SensorEntity):
-    """Energy consumption sensor for current cycle."""
+    """Energy consumption sensor."""
     
     _attr_icon = "mdi:lightning-bolt"
     _attr_device_class = SensorDeviceClass.ENERGY
     _attr_state_class = SensorStateClass.TOTAL_INCREASING
     _attr_native_unit_of_measurement = UnitOfEnergy.WATT_HOUR
-    _attr_suggested_display_precision = 3
     
     def __init__(self, coordinator: WattWatcherCoordinator, entry: ConfigEntry) -> None:
         """Initialize the sensor."""
@@ -240,11 +170,18 @@ class WattWatcherEnergySensor(WattWatcherEntity, SensorEntity):
         self._attr_name = f"{coordinator.config.get('name')} Energy"
         self._energy_this_cycle = 0.0
         self._last_update_time = datetime.now()
+        self._last_power = 0.0
         
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
         await super().async_added_to_hass()
         self._last_update_time = datetime.now()
+        self._last_power = self.coordinator.data.get("current_power", 0.0)
+        
+        # Listen for coordinator updates
+        self.async_on_remove(
+            self.coordinator.async_add_listener(self._handle_coordinator_update)
+        )
 
     @callback
     def _handle_coordinator_update(self) -> None:
@@ -252,20 +189,27 @@ class WattWatcherEnergySensor(WattWatcherEntity, SensorEntity):
         now = datetime.now()
         time_diff = (now - self._last_update_time).total_seconds()
         
-        # Calculate energy (Wh = W * hours)
-        avg_power = self.coordinator.data.get("avg_power", 0.0)
-        energy_increment = avg_power * (time_diff / 3600)  # Convert seconds to hours
+        # Get current power and state
+        current_power = self.coordinator.data.get("current_power", 0.0)
+        current_state = self.coordinator.data.get("current_state", "idle")
         
-        # Only add energy if device is running
-        if self.coordinator.data.get("state") == STATE_RUNNING:
+        # Calculate average power
+        avg_power = (self._last_power + current_power) / 2
+        
+        # Calculate energy (Wh = W * hours)
+        energy_increment = avg_power * (time_diff / 3600)
+        
+        # Reset energy when returning to idle
+        if current_state == "idle":
+            self._energy_this_cycle = 0.0
+        else:
+            # Add energy when not idle
             self._energy_this_cycle += energy_increment
         
-        # Reset energy when cycle ends
-        current_state = self.coordinator.data.get("state", "unknown")
-        if current_state not in [STATE_RUNNING, "unknown"]:
-            self._energy_this_cycle = 0.0
-        
+        # Update tracking variables
         self._last_update_time = now
+        self._last_power = current_power
+        
         self.async_write_ha_state()
 
     @property
@@ -274,9 +218,17 @@ class WattWatcherEnergySensor(WattWatcherEntity, SensorEntity):
         return round(self._energy_this_cycle, 3)
     
     @property
+    def available(self) -> bool:
+        """Only available when device is not idle."""
+        return (
+            super().available 
+            and self.coordinator.data.get("current_state") != "idle"
+        )
+    
+    @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional attributes."""
         return {
             "kwh": round(self._energy_this_cycle / 1000, 4),
-            "avg_power_w": self.coordinator.data.get("avg_power", 0.0)
+            "current_state": self.coordinator.data.get("current_state", "idle"),
         }
