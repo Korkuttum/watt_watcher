@@ -12,7 +12,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN, STATE_RUNNING
+from .const import DOMAIN
 from .coordinator import WattWatcherCoordinator
 from .entity import WattWatcherEntity
 
@@ -29,34 +29,35 @@ async def async_setup_entry(
     
     # Create binary sensor entity
     entities = [
-        WattWatcherRunningSensor(coordinator, entry),
+        WattWatcherActiveSensor(coordinator, entry),
     ]
     
     async_add_entities(entities)
 
 
-class WattWatcherRunningSensor(WattWatcherEntity, BinarySensorEntity):
-    """Binary sensor indicating if appliance is running."""
+class WattWatcherActiveSensor(WattWatcherEntity, BinarySensorEntity):
+    """Active binary sensor."""
     
-    _attr_device_class = BinarySensorDeviceClass.RUNNING
+    _attr_device_class = BinarySensorDeviceClass.POWER
+    _attr_icon = "mdi:power"
     
     def __init__(self, coordinator: WattWatcherCoordinator, entry: ConfigEntry) -> None:
         """Initialize the binary sensor."""
         super().__init__(coordinator, entry)
-        self._attr_unique_id = f"{entry.entry_id}_running"
-        self._attr_name = f"{coordinator.config.get('name')} Running"
-        self._attr_icon = "mdi:power"
+        self._attr_unique_id = f"{entry.entry_id}_active"
+        self._attr_name = f"{coordinator.config.get('name')} Active"
 
     @property
     def is_on(self) -> bool:
-        """Return true if appliance is running."""
-        return self.coordinator.data.get("state") == STATE_RUNNING
+        """Return true if device is active (not idle and within delay)."""
+        return self.coordinator.data.get("is_active", False)
     
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional attributes."""
+        timing = self.coordinator.data.get("timing_settings", {})
         return {
-            "current_power": self.coordinator.data.get("power", 0.0),
-            "state_duration": self.coordinator.data.get("state_duration", 0),
-            "cycle_duration": self.coordinator.data.get("cycle_duration", 0)
+            "current_power": self.coordinator.data.get("current_power", 0.0),
+            "current_state": self.coordinator.data.get("current_state", "idle"),
+            "active_delay": timing.get("active_delay", 60),
         }
