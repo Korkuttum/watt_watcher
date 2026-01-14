@@ -59,6 +59,7 @@ class WattWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         """Initialize flow."""
         self.config_data: Dict[str, Any] = {}
         self.state_names: List[str] = []
+        self.states: List[Dict[str, Any]] = []
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
@@ -69,19 +70,16 @@ class WattWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             self.config_data.update(user_input)
             
-            # Generate unique ID
             await self.async_set_unique_id(
                 f"{DOMAIN}_{user_input[CONF_POWER_SENSOR]}"
             )
             self._abort_if_unique_id_configured()
             
-            # Get default state names
             device_type = user_input[CONF_DEVICE_TYPE]
             self.state_names = _get_default_states(device_type)
             
             return await self.async_step_state_names()
 
-        # Simple form for basic settings
         schema = vol.Schema({
             vol.Required(CONF_NAME, default=DEFAULT_NAME): str,
             vol.Required(CONF_POWER_SENSOR): selector.EntitySelector(
@@ -110,28 +108,33 @@ class WattWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_state_names(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Step 2: Enter state names."""
+        """Step 2: Enter / edit state names (multiple text field - orijinal güzel ekran)."""
         errors = {}
 
         if user_input is not None:
-            # Get state names from multiple input field
             if "state_names" in user_input:
                 state_names = [name.strip() for name in user_input["state_names"] if name.strip()]
-                if state_names:
-                    self.state_names = state_names
-                    return await self.async_step_state_thresholds()
+                if len(state_names) < 2:
+                    errors["state_names"] = "en_az_iki_durum_gerekli"
                 else:
-                    errors["state_names"] = "no_states"
+                    self.state_names = state_names
+                    # İlk durum başlangıç, son durum bitiş olacak
+                    self.states = []
+                    for i, name in enumerate(state_names):
+                        comparison = COMPARISON_GREATER if i == 0 else COMPARISON_LESS if i == len(state_names)-1 else COMPARISON_GREATER
+                        self.states.append({
+                            CONF_STATE_NAME: name,
+                            CONF_THRESHOLD: 0.0,
+                            CONF_COMPARISON: comparison,
+                            CONF_ICON: "mdi:circle"
+                        })
+                    return await self.async_step_state_thresholds()
 
-        # Multiple input field for state names
-        # Home Assistant versiyonuna göre farklı yöntemler
         try:
-            # Yeni versiyon için
             text_config = selector.TextSelectorConfig(multiple=True)
         except:
-            # Eski versiyon için
             text_config = selector.TextSelector()
-        
+
         schema = vol.Schema({
             vol.Required(
                 "state_names",
@@ -144,102 +147,103 @@ class WattWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             data_schema=schema,
             errors=errors,
             description_placeholders={
-                "device_type": self.config_data.get(CONF_DEVICE_TYPE, "").replace("_", " ").title()
-            },
+                "note": "Durum isimlerini virgülle veya her satıra bir tane yazın. İlk durum başlangıç (otomatik >), son durum bitiş (otomatik <) olacak."
+            }
         )
 
     async def async_step_state_thresholds(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Step 3: Configure thresholds for each state."""
+        """Step 3: Threshold, comparison (sadece ara durumlar için), icon."""
         errors = {}
 
         if user_input is not None:
-            # Collect all states with thresholds
-            states = []
-            for i, state_name in enumerate(self.state_names):
-                threshold_key = f"threshold_{i}"
-                comparison_key = f"comparison_{i}"
+            updated = True
+            for i, state in enumerate(self.states):
+                th_key = f"threshold_{i}"
+                cmp_key = f"comparison_{i}"
                 icon_key = f"icon_{i}"
-                
-                if threshold_key in user_input:
+
+                if th_key in user_input:
                     try:
-                        threshold = float(user_input[threshold_key])
-                        comparison = user_input.get(comparison_key, COMPARISON_GREATER)
-                        icon = user_input.get(icon_key, "mdi:circle")
-                        
-                        states.append({
-                            CONF_STATE_NAME: state_name,
-                            CONF_THRESHOLD: threshold,
-                            CONF_COMPARISON: comparison,
-                            CONF_ICON: icon
-                        })
+                        state[CONF_THRESHOLD] = float(user_input[th_key])
                     except ValueError:
-                        errors[threshold_key] = "invalid_number"
-            
-            if not states:
-                errors["base"] = "no_states"
-            elif not errors:
-                self.config_data[CONF_STATES] = states
+                        errors[th_key] = "gecersiz_sayi"
+
+                if icon_key in user_input and user_input[icon_key]:
+                    state[CONF_ICON] = user_input[icon_key]
+
+                # Sadece ara durumlar için comparison değiştirilebilir
+                if 0 < i < len(self.states) - 1:
+                    if cmp_key in user_input:
+                        state[CONF_COMPARISON] = user_input[cmp_key]
+
+            # Başlangıç ve bitiş karşılaştırmalarını zorla sabitle
+            self.states[0][CONF_COMPARISON] = COMPARISON_GREATER
+            self.states[-1][CONF_COMPARISON] = COMPARISON_LESS
+
+            if not errors:
+                self.config_data[CONF_STATES] = self.states
                 return await self.async_step_timing()
 
-        # Build schema with threshold fields for each state
         schema_dict = {}
-        
-        for i, state_name in enumerate(self.state_names):
-            # State header
+
+        for i, state in enumerate(self.states):
+            name = state[CONF_STATE_NAME]
+            is_start = i == 0
+            is_finish = i == len(self.states) - 1
+
             schema_dict[vol.Optional(
                 f"header_{i}",
-                default=f"📊 {state_name}:"
+                default=f"📊 {name} {'(Başlangıç - otomatik >)' if is_start else '(Bitiş - otomatik <)' if is_finish else ''}:"
             )] = str
-            
-            # Threshold field
+
             schema_dict[vol.Required(
                 f"threshold_{i}",
-                default=0.0
+                default=state.get(CONF_THRESHOLD, 0.0)
             )] = vol.Coerce(float)
-            
-            # Comparison selector
-            schema_dict[vol.Required(
-                f"comparison_{i}",
-                default=COMPARISON_GREATER
-            )] = selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=[
-                        {"value": COMPARISON_GREATER, "label": "Büyüktür (>)"},
-                        {"value": COMPARISON_LESS, "label": "Küçüktür (<)"},
-                    ],
-                    mode=selector.SelectSelectorMode.DROPDOWN
+
+            if not is_start and not is_finish:
+                schema_dict[vol.Required(
+                    f"comparison_{i}",
+                    default=state.get(CONF_COMPARISON, COMPARISON_GREATER)
+                )] = selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"value": COMPARISON_GREATER, "label": "Büyüktür (>)"},
+                            {"value": COMPARISON_LESS, "label": "Küçüktür (<)"},
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN
+                    )
                 )
-            )
-            
-            # Icon field
+
             schema_dict[vol.Optional(
                 f"icon_{i}",
-                default="mdi:circle"
+                default=state.get(CONF_ICON, "mdi:circle")
             )] = str
-        
-        schema = vol.Schema(schema_dict)
-        
+
         return self.async_show_form(
             step_id="state_thresholds",
-            data_schema=schema,
+            data_schema=vol.Schema(schema_dict),
             errors=errors,
         )
 
     async def async_step_timing(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Step 4: Configure timing settings."""
+        """Timing settings."""
         errors = {}
 
         if user_input is not None:
-            # Save all configuration
-            self.config_data.update(user_input)
-            
+            self.config_data.update({
+                CONF_ACTIVE_DELAY: user_input[CONF_ACTIVE_DELAY],
+                CONF_FINISHED_DELAY: user_input[CONF_FINISHED_DELAY],
+                CONF_IDLE_DELAY: user_input[CONF_IDLE_DELAY],
+                "scan_interval": user_input.get("scan_interval", 10),
+            })
             return self.async_create_entry(
-                title=self.config_data[CONF_NAME],
-                data=self.config_data,
+                title=self.config_data.get(CONF_NAME, DEFAULT_NAME),
+                data=self.config_data
             )
 
         schema = vol.Schema({
@@ -264,70 +268,62 @@ class WattWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     def async_get_options_flow(
         config_entry: config_entries.ConfigEntry,
     ) -> config_entries.OptionsFlow:
-        """Create the options flow."""
-        return WattWatcherOptionsFlow(config_entry)
+        """Options flow for editing."""
+        return WattWatcherOptionsFlowHandler(config_entry)
 
 
-class WattWatcherOptionsFlow(config_entries.OptionsFlow):
-    """Handle options flow for Watt Watcher."""
+class WattWatcherOptionsFlowHandler(config_entries.OptionsFlow):
+    """Handle options flow."""
 
-    def __init__(self, config_entry: ConfigEntry) -> None:
-        """Initialize options flow."""
+    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
         self.config_entry = config_entry
-        self.config_data = dict(config_entry.data)
-        self.state_names: List[str] = []
-        self.states: List[Dict[str, Any]] = []
+        self.state_names = []
+        self.states = []
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Manage the options."""
-        # Load current states
-        self.states = self.config_data.get(CONF_STATES, [])
-        self.state_names = [state[CONF_STATE_NAME] for state in self.states]
-        
+        states = self.config_entry.data.get(CONF_STATES, [])
+        self.states = states.copy()
+        self.state_names = [s[CONF_STATE_NAME] for s in states]
         return await self.async_step_state_names()
 
     async def async_step_state_names(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Edit state names."""
         errors = {}
 
         if user_input is not None:
             if "state_names" in user_input:
-                state_names = [name.strip() for name in user_input["state_names"] if name.strip()]
-                if state_names:
-                    # Update state names, keep existing thresholds if possible
+                state_names = [n.strip() for n in user_input["state_names"] if n.strip()]
+                if len(state_names) < 2:
+                    errors["state_names"] = "en_az_iki_durum_gerekli"
+                else:
+                    self.state_names = state_names
                     new_states = []
-                    for i, state_name in enumerate(state_names):
+                    for i, name in enumerate(state_names):
+                        # Mevcut threshold/icon varsa koru
                         if i < len(self.states):
-                            # Keep existing threshold/icon
                             new_states.append({
                                 **self.states[i],
-                                CONF_STATE_NAME: state_name
+                                CONF_STATE_NAME: name
                             })
                         else:
-                            # New state with defaults
+                            comparison = COMPARISON_GREATER if i == 0 else COMPARISON_LESS if i == len(state_names)-1 else COMPARISON_GREATER
                             new_states.append({
-                                CONF_STATE_NAME: state_name,
+                                CONF_STATE_NAME: name,
                                 CONF_THRESHOLD: 0.0,
-                                CONF_COMPARISON: COMPARISON_GREATER,
+                                CONF_COMPARISON: comparison,
                                 CONF_ICON: "mdi:circle"
                             })
-                    
                     self.states = new_states
-                    self.state_names = state_names
                     return await self.async_step_state_thresholds()
-                else:
-                    errors["state_names"] = "no_states"
 
-        # Try different approaches for TextSelector
         try:
             text_config = selector.TextSelectorConfig(multiple=True)
         except:
             text_config = selector.TextSelector()
-        
+
         schema = vol.Schema({
             vol.Required(
                 "state_names",
@@ -344,113 +340,94 @@ class WattWatcherOptionsFlow(config_entries.OptionsFlow):
     async def async_step_state_thresholds(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Edit state thresholds."""
         errors = {}
 
         if user_input is not None:
-            # Update states with new thresholds
-            for i, state_name in enumerate(self.state_names):
-                threshold_key = f"threshold_{i}"
-                comparison_key = f"comparison_{i}"
+            for i, state in enumerate(self.states):
+                th_key = f"threshold_{i}"
                 icon_key = f"icon_{i}"
-                
-                if threshold_key in user_input:
+                cmp_key = f"comparison_{i}"
+
+                if th_key in user_input:
                     try:
-                        threshold = float(user_input[threshold_key])
-                        comparison = user_input.get(comparison_key, COMPARISON_GREATER)
-                        icon = user_input.get(icon_key, "mdi:circle")
-                        
-                        if i < len(self.states):
-                            self.states[i].update({
-                                CONF_THRESHOLD: threshold,
-                                CONF_COMPARISON: comparison,
-                                CONF_ICON: icon
-                            })
-                        else:
-                            self.states.append({
-                                CONF_STATE_NAME: state_name,
-                                CONF_THRESHOLD: threshold,
-                                CONF_COMPARISON: comparison,
-                                CONF_ICON: icon
-                            })
+                        state[CONF_THRESHOLD] = float(user_input[th_key])
                     except ValueError:
-                        errors[threshold_key] = "invalid_number"
-            
+                        errors[th_key] = "gecersiz_sayi"
+
+                if icon_key in user_input:
+                    state[CONF_ICON] = user_input[icon_key]
+
+                if 0 < i < len(self.states) - 1 and cmp_key in user_input:
+                    state[CONF_COMPARISON] = user_input[cmp_key]
+
+            # Sabitle
+            self.states[0][CONF_COMPARISON] = COMPARISON_GREATER
+            self.states[-1][CONF_COMPARISON] = COMPARISON_LESS
+
             if not errors:
+                new_data = {
+                    **self.config_entry.data,
+                    CONF_STATES: self.states,
+                }
+                self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
                 return await self.async_step_timing()
 
-        # Build schema with current values
         schema_dict = {}
-        
-        for i, state_name in enumerate(self.state_names):
-            # Get current values
-            if i < len(self.states):
-                state = self.states[i]
-                default_threshold = state.get(CONF_THRESHOLD, 0.0)
-                default_comparison = state.get(CONF_COMPARISON, COMPARISON_GREATER)
-                default_icon = state.get(CONF_ICON, "mdi:circle")
-            else:
-                default_threshold = 0.0
-                default_comparison = COMPARISON_GREATER
-                default_icon = "mdi:circle"
-            
-            # State header
+
+        for i, state in enumerate(self.states):
+            name = state[CONF_STATE_NAME]
+            is_start = i == 0
+            is_finish = i == len(self.states) - 1
+            cmp_label = " (otomatik >)" if is_start else " (otomatik <)" if is_finish else ""
+
             schema_dict[vol.Optional(
                 f"header_{i}",
-                default=f"📊 {state_name}:"
+                default=f"📊 {name}{cmp_label}:"
             )] = str
-            
-            # Threshold field
+
             schema_dict[vol.Required(
                 f"threshold_{i}",
-                default=default_threshold
+                default=state.get(CONF_THRESHOLD, 0.0)
             )] = vol.Coerce(float)
-            
-            # Comparison selector
-            schema_dict[vol.Required(
-                f"comparison_{i}",
-                default=default_comparison
-            )] = selector.SelectSelector(
-                selector.SelectSelectorConfig(
-                    options=[
-                        {"value": COMPARISON_GREATER, "label": "Büyüktür (>)"},
-                        {"value": COMPARISON_LESS, "label": "Küçüktür (<)"},
-                    ],
-                    mode=selector.SelectSelectorMode.DROPDOWN
+
+            if not is_start and not is_finish:
+                schema_dict[vol.Required(
+                    f"comparison_{i}",
+                    default=state.get(CONF_COMPARISON, COMPARISON_GREATER)
+                )] = selector.SelectSelector(
+                    selector.SelectSelectorConfig(
+                        options=[
+                            {"value": COMPARISON_GREATER, "label": "Büyüktür (>)"},
+                            {"value": COMPARISON_LESS, "label": "Küçüktür (<)"},
+                        ],
+                        mode=selector.SelectSelectorMode.DROPDOWN
+                    )
                 )
-            )
-            
-            # Icon field
+
             schema_dict[vol.Optional(
                 f"icon_{i}",
-                default=default_icon
+                default=state.get(CONF_ICON, "mdi:circle")
             )] = str
-        
-        schema = vol.Schema(schema_dict)
-        
+
         return self.async_show_form(
             step_id="state_thresholds",
-            data_schema=schema,
+            data_schema=vol.Schema(schema_dict),
             errors=errors,
         )
 
     async def async_step_timing(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        """Edit timing settings."""
         errors = {}
 
         if user_input is not None:
-            # Update configuration
             new_data = {
                 **self.config_entry.data,
-                CONF_STATES: self.states,
                 CONF_ACTIVE_DELAY: user_input[CONF_ACTIVE_DELAY],
                 CONF_FINISHED_DELAY: user_input[CONF_FINISHED_DELAY],
                 CONF_IDLE_DELAY: user_input[CONF_IDLE_DELAY],
                 "scan_interval": user_input.get("scan_interval", 10),
             }
-            
             self.hass.config_entries.async_update_entry(
                 self.config_entry, data=new_data
             )
