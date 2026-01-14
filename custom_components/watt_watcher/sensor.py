@@ -1,3 +1,4 @@
+# sensor.py (Değişiklikler: CycleDurationSensor için dakika birim, available'dan idle kontrolü kaldır, EnergySensor için available'dan idle kontrolü kaldır)
 """Sensor platform for Watt Watcher."""
 from __future__ import annotations
 
@@ -117,7 +118,7 @@ class WattWatcherCycleDurationSensor(WattWatcherEntity, SensorEntity):
     
     _attr_icon = "mdi:progress-clock"
     _attr_device_class = SensorDeviceClass.DURATION
-    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
+    _attr_native_unit_of_measurement = UnitOfTime.MINUTES
     
     def __init__(self, coordinator: WattWatcherCoordinator, entry: ConfigEntry) -> None:
         """Initialize the sensor."""
@@ -127,30 +128,25 @@ class WattWatcherCycleDurationSensor(WattWatcherEntity, SensorEntity):
 
     @property
     def native_value(self) -> int:
-        """Return current cycle duration."""
-        return self.coordinator.data.get("cycle_duration", 0)
+        """Return current cycle duration in minutes."""
+        return self.coordinator.data.get("cycle_duration", 0) // 60
     
     @property
     def available(self) -> bool:
-        """Only available when device is not idle."""
-        return (
-            super().available 
-            and self.coordinator.data.get("current_state") != "idle"
-        )
+        """Only available when device is not idle. DEĞİŞİKLİK: Bu kontrolü kaldır, her zaman available olsun"""
+        return super().available
     
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return additional attributes."""
-        duration = self.native_value
-        hours = duration // 3600
-        minutes = (duration % 3600) // 60
-        seconds = duration % 60
+        duration_seconds = self.coordinator.data.get("cycle_duration", 0)
+        duration_minutes = duration_seconds // 60
+        remaining_seconds = duration_seconds % 60
         
         return {
-            "hours": hours,
-            "minutes": minutes,
-            "seconds": seconds,
-            "human_readable": f"{hours}h {minutes}m {seconds}s",
+            "minutes": duration_minutes,
+            "seconds": remaining_seconds,
+            "human_readable": f"{duration_minutes}m {remaining_seconds}s",
             "current_state": self.coordinator.data.get("current_state", "idle"),
         }
 
@@ -219,11 +215,8 @@ class WattWatcherEnergySensor(WattWatcherEntity, SensorEntity):
     
     @property
     def available(self) -> bool:
-        """Only available when device is not idle."""
-        return (
-            super().available 
-            and self.coordinator.data.get("current_state") != "idle"
-        )
+        """Only available when device is not idle. DEĞİŞİKLİK: Bu kontrolü kaldır, her zaman available olsun"""
+        return super().available
     
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
