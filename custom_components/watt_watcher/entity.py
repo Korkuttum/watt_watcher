@@ -15,7 +15,6 @@ class WattWatcherEntity(CoordinatorEntity[WattWatcherCoordinator], Entity):
     _attr_has_entity_name = True
     
     def __init__(self, coordinator: WattWatcherCoordinator, entry: ConfigEntry) -> None:
-        """Initialize the entity."""
         super().__init__(coordinator)
         self._entry = entry
         self._attr_device_info = DeviceInfo(
@@ -28,9 +27,9 @@ class WattWatcherEntity(CoordinatorEntity[WattWatcherCoordinator], Entity):
     
     @property
     def available(self) -> bool:
-        """Return True if entity is available."""
-        # DÜZELTME: "smart_state" yerine "current_state" kullan
-        return (
-            super().available 
-            and self.coordinator.data.get("current_state") != "error"
-        )
+        """Entity available mı? Error dışında genelde evet."""
+        if self.coordinator.last_update_success is False:
+            return False
+        if self.coordinator.data is None:
+            return False
+        return self.coordinator.data.get("current_state") != "error"
