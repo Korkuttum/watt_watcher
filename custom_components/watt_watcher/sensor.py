@@ -1,4 +1,3 @@
-# sensor.py (Değişiklikler: CycleDurationSensor için dakika birim, available'dan idle kontrolü kaldır, EnergySensor için available'dan idle kontrolü kaldır)
 """Sensor platform for Watt Watcher."""
 from __future__ import annotations
 
@@ -75,7 +74,12 @@ class WattWatcherStateSensor(WattWatcherEntity, SensorEntity):
         self._attr_unique_id = f"{entry.entry_id}_state"
         self._attr_name = f"{coordinator.config.get('name')} Status"
         self._attr_device_class = SensorDeviceClass.ENUM
-        self._attr_options = state_options
+        
+        # KRİTİK DÜZELTME: Kullanıcının tanımladığı durumlar + "idle"
+        self._attr_options = state_options + ["idle"]
+        
+        # İstersen "unknown" veya hata durumlarını da ekleyebilirsin:
+        # self._attr_options = state_options + ["idle", "unknown", "error"]
 
     @property
     def native_value(self) -> str:
@@ -93,13 +97,12 @@ class WattWatcherStateSensor(WattWatcherEntity, SensorEntity):
         timing = self.coordinator.data.get("timing_settings", {})
         states_config = self.coordinator.data.get("states_config", [])
         
-        # Format states configuration for display - DÜZELTME BURADA
         formatted_states = []
         for state in states_config:
             formatted_states.append({
                 "name": state.get("name", ""),
-                "threshold": state.get("threshold", 0),  # min_watt yerine threshold
-                "comparison": state.get("comparison", "greater"),  # karşılaştırma tipi
+                "threshold": state.get("threshold", 0),
+                "comparison": state.get("comparison", "greater"),
                 "icon": state.get("icon", "mdi:circle")
             })
         
@@ -109,7 +112,7 @@ class WattWatcherStateSensor(WattWatcherEntity, SensorEntity):
             "active_delay": timing.get("active_delay", 60),
             "finished_delay": timing.get("finished_delay", 300),
             "idle_delay": timing.get("idle_delay", 3600),
-            "configured_states": formatted_states,  # Artık doğru alanları içeriyor
+            "configured_states": formatted_states,
         }
 
 
@@ -133,7 +136,7 @@ class WattWatcherCycleDurationSensor(WattWatcherEntity, SensorEntity):
     
     @property
     def available(self) -> bool:
-        """Only available when device is not idle. DEĞİŞİKLİK: Bu kontrolü kaldır, her zaman available olsun"""
+        """Her zaman available olsun (idle'da da gösterilsin)."""
         return super().available
     
     @property
@@ -174,7 +177,6 @@ class WattWatcherEnergySensor(WattWatcherEntity, SensorEntity):
         self._last_update_time = datetime.now()
         self._last_power = self.coordinator.data.get("current_power", 0.0)
         
-        # Listen for coordinator updates
         self.async_on_remove(
             self.coordinator.async_add_listener(self._handle_coordinator_update)
         )
@@ -185,24 +187,17 @@ class WattWatcherEnergySensor(WattWatcherEntity, SensorEntity):
         now = datetime.now()
         time_diff = (now - self._last_update_time).total_seconds()
         
-        # Get current power and state
         current_power = self.coordinator.data.get("current_power", 0.0)
         current_state = self.coordinator.data.get("current_state", "idle")
         
-        # Calculate average power
         avg_power = (self._last_power + current_power) / 2
-        
-        # Calculate energy (Wh = W * hours)
         energy_increment = avg_power * (time_diff / 3600)
         
-        # Reset energy when returning to idle
         if current_state == "idle":
             self._energy_this_cycle = 0.0
         else:
-            # Add energy when not idle
             self._energy_this_cycle += energy_increment
         
-        # Update tracking variables
         self._last_update_time = now
         self._last_power = current_power
         
@@ -215,7 +210,7 @@ class WattWatcherEnergySensor(WattWatcherEntity, SensorEntity):
     
     @property
     def available(self) -> bool:
-        """Only available when device is not idle. DEĞİŞİKLİK: Bu kontrolü kaldır, her zaman available olsun"""
+        """Her zaman available olsun."""
         return super().available
     
     @property
