@@ -1,6 +1,8 @@
 """Config flow for Watt Watcher."""
 from __future__ import annotations
 
+import copy
+
 import voluptuous as vol
 from typing import Any, Dict, List
 import logging
@@ -280,23 +282,63 @@ class WattWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         config_entry: config_entries.ConfigEntry,
     ) -> config_entries.OptionsFlow:
         """Options flow for editing."""
-        return WattWatcherOptionsFlowHandler(config_entry)
+        return WattWatcherOptionsFlowHandler()
+
+
+def _threshold_schema(states: List[Dict[str, Any]]) -> vol.Schema:
+    """Build the per-state threshold form (shared by setup and options)."""
+    schema_dict: Dict[Any, Any] = {}
+    for i, state in enumerate(states):
+        name = state[CONF_STATE_NAME]
+        is_start = i == 0
+        is_finish = i == len(states) - 1
+        label = " (otomatik >)" if is_start else " (otomatik <)" if is_finish else ""
+
+        schema_dict[vol.Optional(f"header_{i}", default=f"📊 {name}{label}:")] = str
+        schema_dict[vol.Required(
+            f"threshold_{i}", default=state.get(CONF_THRESHOLD, 0.0)
+        )] = vol.Coerce(float)
+
+        if not is_start and not is_finish:
+            schema_dict[vol.Required(
+                f"comparison_{i}", default=state.get(CONF_COMPARISON, COMPARISON_GREATER)
+            )] = selector.SelectSelector(
+                selector.SelectSelectorConfig(
+                    options=[
+                        {"value": COMPARISON_GREATER, "label": "Büyüktür (>)"},
+                        {"value": COMPARISON_LESS, "label": "Küçüktür (<)"},
+                    ],
+                    mode=selector.SelectSelectorMode.DROPDOWN,
+                )
+            )
+
+        schema_dict[vol.Optional(
+            f"icon_{i}", default=state.get(CONF_ICON, "mdi:circle")
+        )] = str
+    return vol.Schema(schema_dict)
 
 
 class WattWatcherOptionsFlowHandler(config_entries.OptionsFlow):
-    """Handle options flow."""
+    """Edit states, thresholds and timings.
 
-    def __init__(self, config_entry: config_entries.ConfigEntry) -> None:
-        self.config_entry = config_entry
-        self.state_names = []
-        self.states = []
+    ``self.config_entry`` is provided by Home Assistant (it is read-only, so it
+    must not be assigned in ``__init__``).  Everything is collected first and
+    saved once, as entry *options*, which the coordinator merges over the
+    original entry data.
+    """
+
+    def __init__(self) -> None:
+        self.state_names: List[str] = []
+        self.states: List[Dict[str, Any]] = []
+
+    def _current(self) -> Dict[str, Any]:
+        return {**self.config_entry.data, **self.config_entry.options}
 
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        states = self.config_entry.data.get(CONF_STATES, [])
-        self.states = states.copy()
-        self.state_names = [s[CONF_STATE_NAME] for s in states]
+        self.states = copy.deepcopy(self._current().get(CONF_STATES, []))
+        self.state_names = [s[CONF_STATE_NAME] for s in self.states]
         return await self.async_step_state_names()
 
     async def async_step_state_names(
@@ -305,163 +347,79 @@ class WattWatcherOptionsFlowHandler(config_entries.OptionsFlow):
         errors = {}
 
         if user_input is not None:
-            if "state_names" in user_input:
-                state_names = [n.strip() for n in user_input["state_names"] if n.strip()]
-                if len(state_names) < 2:
-                    errors["state_names"] = "en_az_iki_durum_gerekli"
-                else:
-                    self.state_names = state_names
-                    new_states = []
-                    for i, name in enumerate(state_names):
-                        # Mevcut threshold/icon varsa koru
-                        if i < len(self.states):
-                            new_states.append({
-                                **self.states[i],
-                                CONF_STATE_NAME: name
-                            })
-                        else:
-                            comparison = COMPARISON_GREATER if i == 0 else COMPARISON_LESS if i == len(state_names)-1 else COMPARISON_GREATER
-                            new_states.append({
-                                CONF_STATE_NAME: name,
-                                CONF_THRESHOLD: 0.0,
-                                CONF_COMPARISON: comparison,
-                                CONF_ICON: "mdi:circle"
-                            })
-                    self.states = new_states
-                    return await self.async_step_state_thresholds()
-
-        try:
-            text_config = selector.TextSelectorConfig(multiple=True)
-        except:
-            text_config = selector.TextSelector()
+            state_names = [n.strip() for n in user_input.get("state_names", []) if n.strip()]
+            if len(state_names) < 2:
+                errors["state_names"] = "en_az_iki_durum_gerekli"
+            else:
+                self.state_names = state_names
+                new_states = []
+                for i, name in enumerate(state_names):
+                    if i < len(self.states):
+                        new_states.append({**self.states[i], CONF_STATE_NAME: name})
+                    else:
+                        new_states.append({
+                            CONF_STATE_NAME: name,
+                            CONF_THRESHOLD: 0.0,
+                            CONF_COMPARISON: COMPARISON_GREATER,
+                            CONF_ICON: "mdi:circle",
+                        })
+                self.states = new_states
+                return await self.async_step_state_thresholds()
 
         schema = vol.Schema({
-            vol.Required(
-                "state_names",
-                default=self.state_names
-            ): selector.TextSelector(text_config),
+            vol.Required("state_names", default=self.state_names): selector.TextSelector(
+                selector.TextSelectorConfig(multiple=True)
+            ),
         })
-
-        return self.async_show_form(
-            step_id="state_names",
-            data_schema=schema,
-            errors=errors,
-        )
+        return self.async_show_form(step_id="state_names", data_schema=schema, errors=errors)
 
     async def async_step_state_thresholds(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        errors = {}
-
         if user_input is not None:
             for i, state in enumerate(self.states):
-                th_key = f"threshold_{i}"
-                icon_key = f"icon_{i}"
-                cmp_key = f"comparison_{i}"
+                if f"threshold_{i}" in user_input:
+                    state[CONF_THRESHOLD] = float(user_input[f"threshold_{i}"])
+                if user_input.get(f"icon_{i}"):
+                    state[CONF_ICON] = user_input[f"icon_{i}"]
+                if 0 < i < len(self.states) - 1 and f"comparison_{i}" in user_input:
+                    state[CONF_COMPARISON] = user_input[f"comparison_{i}"]
 
-                if th_key in user_input:
-                    try:
-                        state[CONF_THRESHOLD] = float(user_input[th_key])
-                    except ValueError:
-                        errors[th_key] = "gecersiz_sayi"
-
-                if icon_key in user_input:
-                    state[CONF_ICON] = user_input[icon_key]
-
-                if 0 < i < len(self.states) - 1 and cmp_key in user_input:
-                    state[CONF_COMPARISON] = user_input[cmp_key]
-
-            # Sabitle
+            # First state is always "> start", last is always "< finish"
             self.states[0][CONF_COMPARISON] = COMPARISON_GREATER
             self.states[-1][CONF_COMPARISON] = COMPARISON_LESS
-
-            if not errors:
-                new_data = {
-                    **self.config_entry.data,
-                    CONF_STATES: self.states,
-                }
-                self.hass.config_entries.async_update_entry(self.config_entry, data=new_data)
-                return await self.async_step_timing()
-
-        schema_dict = {}
-
-        for i, state in enumerate(self.states):
-            name = state[CONF_STATE_NAME]
-            is_start = i == 0
-            is_finish = i == len(self.states) - 1
-            cmp_label = " (otomatik >)" if is_start else " (otomatik <)" if is_finish else ""
-
-            schema_dict[vol.Optional(
-                f"header_{i}",
-                default=f"📊 {name}{cmp_label}:"
-            )] = str
-
-            schema_dict[vol.Required(
-                f"threshold_{i}",
-                default=state.get(CONF_THRESHOLD, 0.0)
-            )] = vol.Coerce(float)
-
-            if not is_start and not is_finish:
-                schema_dict[vol.Required(
-                    f"comparison_{i}",
-                    default=state.get(CONF_COMPARISON, COMPARISON_GREATER)
-                )] = selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[
-                            {"value": COMPARISON_GREATER, "label": "Büyüktür (>)"},
-                            {"value": COMPARISON_LESS, "label": "Küçüktür (<)"},
-                        ],
-                        mode=selector.SelectSelectorMode.DROPDOWN
-                    )
-                )
-
-            schema_dict[vol.Optional(
-                f"icon_{i}",
-                default=state.get(CONF_ICON, "mdi:circle")
-            )] = str
+            return await self.async_step_timing()
 
         return self.async_show_form(
-            step_id="state_thresholds",
-            data_schema=vol.Schema(schema_dict),
-            errors=errors,
+            step_id="state_thresholds", data_schema=_threshold_schema(self.states)
         )
 
     async def async_step_timing(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
-        errors = {}
-
         if user_input is not None:
-            new_data = {
-                **self.config_entry.data,
+            options = {
+                CONF_STATES: self.states,
                 CONF_ACTIVE_DELAY: user_input[CONF_ACTIVE_DELAY],
                 CONF_FINISHED_DELAY: user_input[CONF_FINISHED_DELAY],
                 CONF_IDLE_DELAY: user_input[CONF_IDLE_DELAY],
                 CONF_RESUME_WINDOW: user_input[CONF_RESUME_WINDOW],
                 "scan_interval": user_input.get("scan_interval", 10),
             }
-            self.hass.config_entries.async_update_entry(
-                self.config_entry, data=new_data
-            )
-            return self.async_create_entry(title="", data={})
+            # Saving options triggers the entry's update listener, which reloads it.
+            return self.async_create_entry(title="", data=options)
 
-        data = dict(self.config_entry.data)
-        
+        data = self._current()
         schema = vol.Schema({
-            vol.Required(CONF_ACTIVE_DELAY, default=data.get(CONF_ACTIVE_DELAY, DEFAULT_ACTIVE_DELAY)): 
+            vol.Required(CONF_ACTIVE_DELAY, default=data.get(CONF_ACTIVE_DELAY, DEFAULT_ACTIVE_DELAY)):
                 vol.All(vol.Coerce(int), vol.Range(min=10, max=600)),
-            vol.Required(CONF_FINISHED_DELAY, default=data.get(CONF_FINISHED_DELAY, DEFAULT_FINISHED_DELAY)): 
+            vol.Required(CONF_FINISHED_DELAY, default=data.get(CONF_FINISHED_DELAY, DEFAULT_FINISHED_DELAY)):
                 vol.All(vol.Coerce(int), vol.Range(min=30, max=1800)),
-            vol.Required(CONF_IDLE_DELAY, default=data.get(CONF_IDLE_DELAY, DEFAULT_IDLE_DELAY)): 
+            vol.Required(CONF_IDLE_DELAY, default=data.get(CONF_IDLE_DELAY, DEFAULT_IDLE_DELAY)):
                 vol.All(vol.Coerce(int), vol.Range(min=60, max=7200)),
-            vol.Required(CONF_RESUME_WINDOW, default=data.get(CONF_RESUME_WINDOW, DEFAULT_RESUME_WINDOW)): 
+            vol.Required(CONF_RESUME_WINDOW, default=data.get(CONF_RESUME_WINDOW, DEFAULT_RESUME_WINDOW)):
                 vol.All(vol.Coerce(int), vol.Range(min=0, max=7200)),
-            vol.Optional("scan_interval", default=data.get("scan_interval", 10)): 
+            vol.Optional("scan_interval", default=data.get("scan_interval", 10)):
                 vol.All(vol.Coerce(int), vol.Range(min=5, max=60)),
         })
-
-        return self.async_show_form(
-            step_id="timing",
-            data_schema=schema,
-            errors=errors,
-        )
+        return self.async_show_form(step_id="timing", data_schema=schema)
