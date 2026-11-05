@@ -30,7 +30,7 @@ durumunu (çalışıyor, bitti, boşta) çıkaran Home Assistant entegrasyonu.<b
 3. Ayarlar → Cihazlar ve Hizmetler → **Entegrasyon ekle** → *Watt Watcher*.
 
 ### Elle
-`custom_components/watt_watcher` klasörünü Home Assistant'ın `config/custom_components/` içine kopyala ve yeniden başlat.
+Son sürümün `watt_watcher.zip` dosyasını [Releases](https://github.com/Korkuttum/watt_watcher/releases) sayfasından indir ve içindekileri `config/custom_components/watt_watcher/` içine aç. Ya da `custom_components/watt_watcher` klasörünü Home Assistant'ın `config/custom_components/` içine kopyala ve yeniden başlat.
 
 ## Zamanlamalar
 
