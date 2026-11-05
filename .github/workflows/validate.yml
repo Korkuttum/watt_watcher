@@ -17,4 +17,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - run: python3 tests/test_state_machine.py
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+      - run: pip install -r requirements_test.txt
+      - name: State machine (offline)
+        run: python3 tests/test_state_machine.py
+      - name: Config flow and integration (real Home Assistant)
+        run: python3 -m pytest -q

@@ -43,11 +43,13 @@ unpack it into `config/custom_components/watt_watcher/` and restart Home Assista
 ## Setup
 
 1. Pick a name, the power sensor and the device type.
-2. Edit the state names (one per line). The last one is the finish state.
-3. Set a watt threshold, comparison and icon for each state.
-4. Adjust the timings (below).
+2. Edit the state names (one per line). The first one is the start state, the last one is the finish state.
+3. For each state you get its own screen: watt threshold, icon, and (for in-between states) greater/less.
+4. Set the timings. Resume window and scan interval are tucked into a collapsed **Advanced** section.
 
-Everything can be changed later under **Configure** on the integration card.
+Afterwards, **Configure** on the integration card opens a menu: jump straight to **Timings**, or edit
+**States and thresholds**. Renaming a state keeps its threshold and icon. **Reconfigure** changes the name
+or the power sensor.
 
 ## Timings
 
@@ -135,7 +137,8 @@ triggers:
 ## Development
 
 ```bash
-python3 tests/test_state_machine.py   # no Home Assistant needed
+python3 tests/test_state_machine.py                    # state machine, no Home Assistant needed
+pip install -r requirements_test.txt && python3 -m pytest   # config flow + integration, real Home Assistant
 ```
 
 ## License

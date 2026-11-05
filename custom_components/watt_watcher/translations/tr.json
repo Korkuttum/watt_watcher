@@ -8,6 +8,10 @@
           "name": "Ad",
           "power_sensor": "Güç sensörü",
           "device_type": "Cihaz türü"
+        },
+        "data_description": {
+          "power_sensor": "Cihazın prizinin watt cinsinden güç sensörü.",
+          "device_type": "Varsayılan durum adlarını ve zamanlamaları belirler."
         }
       },
       "state_names": {
@@ -17,38 +21,77 @@
           "state_names": "Durum adları"
         }
       },
-      "state_thresholds": {
-        "title": "Eşikler",
-        "description": "Her durum için watt eşiğini girin."
+      "state": {
+        "title": "{position} · {state}",
+        "description": "{role}",
+        "data": {
+          "threshold": "Eşik",
+          "comparison": "Karşılaştırma",
+          "icon": "İkon"
+        },
+        "data_description": {
+          "threshold": "Watt cinsinden güç eşiği.",
+          "comparison": "Güç eşiğin üstünde mi altında mı bu duruma girer.",
+          "icon": "Durum sensöründe gösterilir."
+        }
       },
       "timing": {
         "title": "Zamanlamalar",
+        "description": "Cihazın bir döngüyü ne zaman başlattığını ve bitirdiğini belirler. Tüm süreler saniyedir.",
         "data": {
-          "active_delay": "Başlama gecikmesi (sn)",
-          "finished_delay": "Bitiş gecikmesi (sn)",
-          "idle_delay": "Boşta gecikmesi (sn)",
-          "resume_window": "Devam etme penceresi (sn)",
-          "scan_interval": "Tarama aralığı (sn)"
+          "active_delay": "Başlama gecikmesi",
+          "finished_delay": "Bitiş gecikmesi",
+          "idle_delay": "Boşta gecikmesi"
         },
         "data_description": {
-          "active_delay": "Gücün bu süre boyunca eşiğin üstünde kalması gerekir; sonra döngü başlar.",
-          "finished_delay": "Gücün bu süre boyunca düşük kalması gerekir; sonra döngü biter. Cihazın yıkama arası duraklamalarından uzun seçin.",
-          "idle_delay": "'Bitti' durumunun ne kadar gösterileceği.",
-          "resume_window": "Bitti göründükten sonra bu süre içinde güç geri gelirse yeni başlangıç değil, aynı döngünün devamı sayılır. 0 = kapalı.",
-          "scan_interval": "Güç sensörünün kaç saniyede bir okunacağı."
+          "active_delay": "Güç bu süre boyunca eşiğin üstünde kalırsa döngü başlar.",
+          "finished_delay": "Güç bu süre boyunca düşük kalırsa döngü biter. Cihazın yıkama arası duraklamalarından uzun seçin.",
+          "idle_delay": "'Bitti' durumunun ne kadar gösterileceği."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Gelişmiş",
+            "description": "Çoğu kullanıcı bunları değiştirmez.",
+            "data": {
+              "resume_window": "Devam etme penceresi",
+              "scan_interval": "Tarama aralığı"
+            },
+            "data_description": {
+              "resume_window": "Bittikten sonra bu süre içinde güç dönerse yeni başlangıç değil, aynı döngünün devamı sayılır. 0 = kapalı.",
+              "scan_interval": "Güç sensörünün kaç saniyede bir okunacağı."
+            }
+          }
+        }
+      },
+      "reconfigure": {
+        "title": "Yeniden yapılandır",
+        "description": "Adı ya da izlenen güç sensörünü değiştirin. Durumlar ve zamanlamalar için Yapılandır'ı kullanın.",
+        "data": {
+          "name": "Ad",
+          "power_sensor": "Güç sensörü"
         }
       }
     },
-    "abort": {
-      "already_configured": "Bu güç sensörü zaten izleniyor."
-    },
     "error": {
-      "en_az_iki_durum_gerekli": "En az iki durum gerekli.",
-      "gecersiz_sayi": "Geçersiz sayı."
+      "min_two_states": "En az iki durum gerekli.",
+      "duplicate_states": "Durum adları birbirinden farklı olmalı.",
+      "reserved_name": "'idle' adı dahili olarak kullanılıyor, başka bir ad seçin."
+    },
+    "abort": {
+      "already_configured": "Bu güç sensörü zaten izleniyor.",
+      "reconfigure_successful": "Ayarlar güncellendi."
     }
   },
   "options": {
     "step": {
+      "init": {
+        "title": "Watt Watcher",
+        "description": "Ne değiştirmek istiyorsunuz?",
+        "menu_options": {
+          "timing": "Zamanlamalar (bitiş gecikmesi, boşta, devam penceresi)",
+          "state_names": "Durumlar ve eşikler"
+        }
+      },
       "state_names": {
         "title": "Durumlar",
         "description": "Her satıra bir durum adı yazın. İlk durum başlangıç (güç eşiğin üstünde), son durum bitiş (güç eşiğin altında) olur.",
@@ -56,25 +99,46 @@
           "state_names": "Durum adları"
         }
       },
-      "state_thresholds": {
-        "title": "Eşikler",
-        "description": "Her durum için watt eşiğini girin."
+      "state": {
+        "title": "{position} · {state}",
+        "description": "{role}",
+        "data": {
+          "threshold": "Eşik",
+          "comparison": "Karşılaştırma",
+          "icon": "İkon"
+        },
+        "data_description": {
+          "threshold": "Watt cinsinden güç eşiği.",
+          "comparison": "Güç eşiğin üstünde mi altında mı bu duruma girer.",
+          "icon": "Durum sensöründe gösterilir."
+        }
       },
       "timing": {
         "title": "Zamanlamalar",
+        "description": "Cihazın bir döngüyü ne zaman başlattığını ve bitirdiğini belirler. Tüm süreler saniyedir.",
         "data": {
-          "active_delay": "Başlama gecikmesi (sn)",
-          "finished_delay": "Bitiş gecikmesi (sn)",
-          "idle_delay": "Boşta gecikmesi (sn)",
-          "resume_window": "Devam etme penceresi (sn)",
-          "scan_interval": "Tarama aralığı (sn)"
+          "active_delay": "Başlama gecikmesi",
+          "finished_delay": "Bitiş gecikmesi",
+          "idle_delay": "Boşta gecikmesi"
         },
         "data_description": {
-          "active_delay": "Gücün bu süre boyunca eşiğin üstünde kalması gerekir; sonra döngü başlar.",
-          "finished_delay": "Gücün bu süre boyunca düşük kalması gerekir; sonra döngü biter. Cihazın yıkama arası duraklamalarından uzun seçin.",
-          "idle_delay": "'Bitti' durumunun ne kadar gösterileceği.",
-          "resume_window": "Bitti göründükten sonra bu süre içinde güç geri gelirse yeni başlangıç değil, aynı döngünün devamı sayılır. 0 = kapalı.",
-          "scan_interval": "Güç sensörünün kaç saniyede bir okunacağı."
+          "active_delay": "Güç bu süre boyunca eşiğin üstünde kalırsa döngü başlar.",
+          "finished_delay": "Güç bu süre boyunca düşük kalırsa döngü biter. Cihazın yıkama arası duraklamalarından uzun seçin.",
+          "idle_delay": "'Bitti' durumunun ne kadar gösterileceği."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Gelişmiş",
+            "description": "Çoğu kullanıcı bunları değiştirmez.",
+            "data": {
+              "resume_window": "Devam etme penceresi",
+              "scan_interval": "Tarama aralığı"
+            },
+            "data_description": {
+              "resume_window": "Bittikten sonra bu süre içinde güç dönerse yeni başlangıç değil, aynı döngünün devamı sayılır. 0 = kapalı.",
+              "scan_interval": "Güç sensörünün kaç saniyede bir okunacağı."
+            }
+          }
         }
       },
       "init": {
@@ -86,8 +150,9 @@
       }
     },
     "error": {
-      "en_az_iki_durum_gerekli": "En az iki durum gerekli.",
-      "gecersiz_sayi": "Geçersiz sayı."
+      "min_two_states": "En az iki durum gerekli.",
+      "duplicate_states": "Durum adları birbirinden farklı olmalı.",
+      "reserved_name": "'idle' adı dahili olarak kullanılıyor, başka bir ad seçin."
     }
   },
   "selector": {
