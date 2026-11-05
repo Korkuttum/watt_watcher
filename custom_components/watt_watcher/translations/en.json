@@ -76,6 +76,13 @@
           "resume_window": "If power returns within this time after finishing, it counts as the same cycle resuming, not a new start. 0 = off.",
           "scan_interval": "How often the power sensor is read."
         }
+      },
+      "init": {
+        "title": "Watt Watcher",
+        "menu_options": {
+          "timing": "Timings (finish delay, idle delay, resume window)",
+          "state_names": "States and thresholds"
+        }
       }
     },
     "error": {
