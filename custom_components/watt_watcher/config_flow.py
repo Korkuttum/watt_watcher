@@ -307,9 +307,10 @@ class WattWatcherOptionsFlowHandler(config_entries.OptionsFlow):
     async def async_step_init(
         self, user_input: dict[str, Any] | None = None
     ) -> FlowResult:
+        """Menu: edit timings directly, or edit the states and thresholds."""
         self.states = copy.deepcopy(self._current().get(CONF_STATES, []))
         self.state_names = [s[CONF_STATE_NAME] for s in self.states]
-        return await self.async_step_state_names()
+        return self.async_show_menu(step_id="init", menu_options=["timing", "state_names"])
 
     async def async_step_state_names(
         self, user_input: dict[str, Any] | None = None

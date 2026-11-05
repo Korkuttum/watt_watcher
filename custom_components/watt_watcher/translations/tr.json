@@ -76,6 +76,13 @@
           "resume_window": "Bitti göründükten sonra bu süre içinde güç geri gelirse yeni başlangıç değil, aynı döngünün devamı sayılır. 0 = kapalı.",
           "scan_interval": "Güç sensörünün kaç saniyede bir okunacağı."
         }
+      },
+      "init": {
+        "title": "Watt Watcher",
+        "menu_options": {
+          "timing": "Zamanlamalar (bitiş gecikmesi, boşta, devam penceresi)",
+          "state_names": "Durumlar ve eşikler"
+        }
       }
     },
     "error": {

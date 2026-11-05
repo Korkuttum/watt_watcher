@@ -4,7 +4,7 @@ from homeassistant.const import Platform
 
 DOMAIN = "watt_watcher"
 PLATFORMS = [Platform.SENSOR, Platform.BINARY_SENSOR]
-VERSION = "0.2.2"
+VERSION = "0.2.3"
 
 # Configuration keys
 CONF_POWER_SENSOR = "power_sensor"
