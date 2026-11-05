@@ -94,8 +94,8 @@ class WattWatcherCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             self.start_state_name = self.states_config[0][CONF_STATE_NAME]
             self.finish_state_name = self.states_config[-1][CONF_STATE_NAME]
         else:
-            self.start_state_name = "çalışıyor"
-            self.finish_state_name = "bitti"
+            self.start_state_name = "running"
+            self.finish_state_name = "finished"
 
         # Runtime state
         self.current_power = 0.0
@@ -115,6 +115,7 @@ class WattWatcherCoordinator(DataUpdateCoordinator[dict[str, Any]]):
         super().__init__(
             hass,
             _LOGGER,
+            config_entry=entry,
             name=f"{DOMAIN}_{entry.entry_id}",
             update_interval=timedelta(seconds=self.scan_interval),
         )
@@ -331,7 +332,7 @@ class WattWatcherCoordinator(DataUpdateCoordinator[dict[str, Any]]):
             "is_active": state not in (STATE_IDLE, self.finish_state_name),
             "power_available": self.power_available,
             "resume_count": self.resume_count,
-            "bitti_duration": finish_duration,
+            "finished_duration": finish_duration,
             "idle_remaining": max(0, self.idle_timeout - finish_duration) if finished else 0,
             "timing_settings": {
                 "active_delay": self.active_delay,

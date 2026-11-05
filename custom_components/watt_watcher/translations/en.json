@@ -12,7 +12,7 @@
       },
       "state_names": {
         "title": "States",
-        "description": "The first state is the start, the last one is the finish.",
+        "description": "One state name per line. The first state is the start (power above its threshold), the last one is the finish (power below its threshold).",
         "data": {
           "state_names": "State names"
         }
@@ -51,7 +51,7 @@
     "step": {
       "state_names": {
         "title": "States",
-        "description": "The first state is the start, the last one is the finish.",
+        "description": "One state name per line. The first state is the start (power above its threshold), the last one is the finish (power below its threshold).",
         "data": {
           "state_names": "State names"
         }
@@ -81,6 +81,44 @@
     "error": {
       "en_az_iki_durum_gerekli": "At least two states are required.",
       "gecersiz_sayi": "Invalid number."
+    }
+  },
+  "selector": {
+    "device_type": {
+      "options": {
+        "washing_machine": "Washing machine",
+        "dishwasher": "Dishwasher",
+        "kettle": "Kettle",
+        "coffee_maker": "Coffee maker",
+        "custom": "Custom device"
+      }
+    },
+    "comparison": {
+      "options": {
+        "greater": "Greater than (>)",
+        "less": "Less than (<)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "power": {
+        "name": "Power"
+      },
+      "state": {
+        "name": "Status"
+      },
+      "cycle_duration": {
+        "name": "Cycle duration"
+      },
+      "energy": {
+        "name": "Cycle energy"
+      }
+    },
+    "binary_sensor": {
+      "active": {
+        "name": "Active"
+      }
     }
   }
 }

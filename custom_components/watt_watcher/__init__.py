@@ -2,12 +2,9 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers import entity_registry as er
 
 from .const import DOMAIN, PLATFORMS
 from .coordinator import WattWatcherCoordinator
@@ -51,13 +48,3 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         hass.data[DOMAIN].pop(entry.entry_id)
         
     return unload_ok
-
-
-async def async_remove_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Handle removal of an entry."""
-    # Clean up any created entities
-    entity_registry = er.async_get(hass)
-    entities = er.async_entries_for_config_entry(entity_registry, entry.entry_id)
-    
-    for entity in entities:
-        entity_registry.async_remove(entity.entity_id)

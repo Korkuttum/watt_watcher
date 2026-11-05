@@ -25,7 +25,7 @@ class _DUC:  # DataUpdateCoordinator stand-in
     def __class_getitem__(cls, item):
         return cls
 
-    def __init__(self, hass, logger, name=None, update_interval=None):
+    def __init__(self, hass, logger, config_entry=None, name=None, update_interval=None):
         self.hass = hass
 
 
