@@ -34,6 +34,17 @@ durumunu (çalışıyor, bitti, boşta) çıkaran Home Assistant entegrasyonu.<b
 ### Elle
 Son sürümün `watt_watcher.zip` dosyasını [Releases](https://github.com/Korkuttum/watt_watcher/releases) sayfasından indir ve içindekileri `config/custom_components/watt_watcher/` içine aç. Ya da `custom_components/watt_watcher` klasörünü Home Assistant'ın `config/custom_components/` içine kopyala ve yeniden başlat.
 
+## Ayarlama
+
+1. Ad, güç sensörü ve cihaz türünü seç.
+2. Durum adlarını düzenle (her satıra bir tane). İlki başlangıç, sonuncusu bitiş durumudur.
+3. Her durum için ayrı bir ekran gelir: watt eşiği, ikon ve (ara durumlarda) büyük/küçük.
+4. Zamanlamaları ayarla. Devam etme penceresi ve tarama aralığı katlanmış **Gelişmiş** bölümündedir.
+
+Sonrasında entegrasyon kartındaki **Yapılandır** bir menü açar: doğrudan **Zamanlamalar**'a git ya da
+**Durumlar ve eşikler**'i düzenle. Bir durumu yeniden adlandırınca eşiği ve ikonu korunur.
+**Yeniden yapılandır** adı ya da güç sensörünü değiştirir.
+
 ## Zamanlamalar
 
 | Ayar | Anlamı | Öneri |

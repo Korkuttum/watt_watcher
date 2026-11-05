@@ -8,6 +8,10 @@
           "name": "Name",
           "power_sensor": "Power sensor",
           "device_type": "Device type"
+        },
+        "data_description": {
+          "power_sensor": "The smart plug's power sensor, in watts.",
+          "device_type": "Sets the suggested state names and timings."
         }
       },
       "state_names": {
@@ -17,38 +21,77 @@
           "state_names": "State names"
         }
       },
-      "state_thresholds": {
-        "title": "Thresholds",
-        "description": "Set the watt threshold for each state."
+      "state": {
+        "title": "{position} · {state}",
+        "description": "{role}",
+        "data": {
+          "threshold": "Threshold",
+          "comparison": "Comparison",
+          "icon": "Icon"
+        },
+        "data_description": {
+          "threshold": "Power threshold in watts.",
+          "comparison": "Whether this state applies above or below the threshold.",
+          "icon": "Shown on the status sensor."
+        }
       },
       "timing": {
         "title": "Timing",
+        "description": "Controls when a cycle counts as started and finished. All values are in seconds.",
         "data": {
-          "active_delay": "Start delay (s)",
-          "finished_delay": "Finish delay (s)",
-          "idle_delay": "Idle delay (s)",
-          "resume_window": "Resume window (s)",
-          "scan_interval": "Scan interval (s)"
+          "active_delay": "Start delay",
+          "finished_delay": "Finish delay",
+          "idle_delay": "Idle delay"
         },
         "data_description": {
           "active_delay": "Power must stay above the threshold this long before a cycle starts.",
           "finished_delay": "Power must stay low this long before the cycle finishes. Pick something longer than the appliance's pauses between phases.",
-          "idle_delay": "How long the finished state is shown before going idle.",
-          "resume_window": "If power returns within this time after finishing, it counts as the same cycle resuming, not a new start. 0 = off.",
-          "scan_interval": "How often the power sensor is read."
+          "idle_delay": "How long the finished state is shown before going idle."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Advanced",
+            "description": "Most people never need to change these.",
+            "data": {
+              "resume_window": "Resume window",
+              "scan_interval": "Scan interval"
+            },
+            "data_description": {
+              "resume_window": "If power returns this soon after finishing, it counts as the same cycle resuming, not a new start. 0 = off.",
+              "scan_interval": "How often the power sensor is read."
+            }
+          }
+        }
+      },
+      "reconfigure": {
+        "title": "Reconfigure",
+        "description": "Change the name or the power sensor being watched. Use Configure for states and timings.",
+        "data": {
+          "name": "Name",
+          "power_sensor": "Power sensor"
         }
       }
     },
-    "abort": {
-      "already_configured": "This power sensor is already being watched."
-    },
     "error": {
-      "en_az_iki_durum_gerekli": "At least two states are required.",
-      "gecersiz_sayi": "Invalid number."
+      "min_two_states": "At least two states are required.",
+      "duplicate_states": "State names must be unique.",
+      "reserved_name": "'idle' is used internally, pick another name."
+    },
+    "abort": {
+      "already_configured": "This power sensor is already being watched.",
+      "reconfigure_successful": "Settings updated."
     }
   },
   "options": {
     "step": {
+      "init": {
+        "title": "Watt Watcher",
+        "description": "What do you want to change?",
+        "menu_options": {
+          "timing": "Timings (finish delay, idle delay, resume window)",
+          "state_names": "States and thresholds"
+        }
+      },
       "state_names": {
         "title": "States",
         "description": "One state name per line. The first state is the start (power above its threshold), the last one is the finish (power below its threshold).",
@@ -56,25 +99,46 @@
           "state_names": "State names"
         }
       },
-      "state_thresholds": {
-        "title": "Thresholds",
-        "description": "Set the watt threshold for each state."
+      "state": {
+        "title": "{position} · {state}",
+        "description": "{role}",
+        "data": {
+          "threshold": "Threshold",
+          "comparison": "Comparison",
+          "icon": "Icon"
+        },
+        "data_description": {
+          "threshold": "Power threshold in watts.",
+          "comparison": "Whether this state applies above or below the threshold.",
+          "icon": "Shown on the status sensor."
+        }
       },
       "timing": {
         "title": "Timing",
+        "description": "Controls when a cycle counts as started and finished. All values are in seconds.",
         "data": {
-          "active_delay": "Start delay (s)",
-          "finished_delay": "Finish delay (s)",
-          "idle_delay": "Idle delay (s)",
-          "resume_window": "Resume window (s)",
-          "scan_interval": "Scan interval (s)"
+          "active_delay": "Start delay",
+          "finished_delay": "Finish delay",
+          "idle_delay": "Idle delay"
         },
         "data_description": {
           "active_delay": "Power must stay above the threshold this long before a cycle starts.",
           "finished_delay": "Power must stay low this long before the cycle finishes. Pick something longer than the appliance's pauses between phases.",
-          "idle_delay": "How long the finished state is shown before going idle.",
-          "resume_window": "If power returns within this time after finishing, it counts as the same cycle resuming, not a new start. 0 = off.",
-          "scan_interval": "How often the power sensor is read."
+          "idle_delay": "How long the finished state is shown before going idle."
+        },
+        "sections": {
+          "advanced": {
+            "name": "Advanced",
+            "description": "Most people never need to change these.",
+            "data": {
+              "resume_window": "Resume window",
+              "scan_interval": "Scan interval"
+            },
+            "data_description": {
+              "resume_window": "If power returns this soon after finishing, it counts as the same cycle resuming, not a new start. 0 = off.",
+              "scan_interval": "How often the power sensor is read."
+            }
+          }
         }
       },
       "init": {
@@ -86,8 +150,9 @@
       }
     },
     "error": {
-      "en_az_iki_durum_gerekli": "At least two states are required.",
-      "gecersiz_sayi": "Invalid number."
+      "min_two_states": "At least two states are required.",
+      "duplicate_states": "State names must be unique.",
+      "reserved_name": "'idle' is used internally, pick another name."
     }
   },
   "selector": {
