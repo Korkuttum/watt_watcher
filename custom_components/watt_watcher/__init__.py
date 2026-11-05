@@ -20,8 +20,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     
     # Create coordinator
     coordinator = WattWatcherCoordinator(hass, entry)
-    
-    # Fetch initial data
+
+    # Restore the state from before the last shutdown, then fetch initial data
+    await coordinator.async_load_state()
     await coordinator.async_config_entry_first_refresh()
     
     # Store coordinator in hass data
