@@ -11,7 +11,6 @@ from homeassistant import config_entries
 from homeassistant.core import callback
 from homeassistant.data_entry_flow import FlowResult
 from homeassistant.helpers import selector
-import homeassistant.helpers.config_validation as cv
 
 from .const import (
     DOMAIN,
@@ -41,18 +40,33 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-def _get_default_states(device_type: str) -> List[str]:
-    """Get default state names based on device type."""
-    if device_type == "washing_machine":
-        return ["çalışıyor", "yıkıyor", "sıkıyor", "bitti"]
-    elif device_type == "dishwasher":
-        return ["çalışıyor", "yıkıyor", "kuruluyor", "bitti"]
-    elif device_type == "kettle":
-        return ["çalışıyor", "kaynıyor", "bitti"]
-    elif device_type == "coffee_maker":
-        return ["çalışıyor", "ısınıyor", "demliyor", "bitti"]
-    else:  # custom
-        return ["çalışıyor", "bitti"]
+_DEFAULT_STATES = {
+    "tr": {
+        "washing_machine": ["çalışıyor", "yıkıyor", "sıkıyor", "bitti"],
+        "dishwasher": ["çalışıyor", "yıkıyor", "kuruluyor", "bitti"],
+        "kettle": ["çalışıyor", "kaynıyor", "bitti"],
+        "coffee_maker": ["çalışıyor", "ısınıyor", "demliyor", "bitti"],
+        "custom": ["çalışıyor", "bitti"],
+    },
+    "en": {
+        "washing_machine": ["running", "washing", "spinning", "finished"],
+        "dishwasher": ["running", "washing", "drying", "finished"],
+        "kettle": ["running", "boiling", "finished"],
+        "coffee_maker": ["running", "heating", "brewing", "finished"],
+        "custom": ["running", "finished"],
+    },
+}
+
+
+def _lang(hass) -> str:
+    """Language used for generated text: Turkish if HA is Turkish, else English."""
+    return "tr" if (hass.config.language or "").lower().startswith("tr") else "en"
+
+
+def _get_default_states(device_type: str, language: str = "en") -> List[str]:
+    """Default state names for a device type; the last one is the "finished" state."""
+    table = _DEFAULT_STATES.get(language, _DEFAULT_STATES["en"])
+    return list(table.get(device_type, table["custom"]))
 
 
 class WattWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -81,7 +95,7 @@ class WattWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured()
             
             device_type = user_input[CONF_DEVICE_TYPE]
-            self.state_names = _get_default_states(device_type)
+            self.state_names = _get_default_states(device_type, _lang(self.hass))
             
             return await self.async_step_state_names()
 
@@ -92,13 +106,8 @@ class WattWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             ),
             vol.Required(CONF_DEVICE_TYPE, default=DEFAULT_DEVICE_TYPE): selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=[
-                        {"value": "washing_machine", "label": "Çamaşır Makinesi"},
-                        {"value": "dishwasher", "label": "Bulaşık Makinesi"},
-                        {"value": "kettle", "label": "Su Isıtıcı"},
-                        {"value": "coffee_maker", "label": "Kahve Makinesi"},
-                        {"value": "custom", "label": "Özel Cihaz"}
-                    ],
+                    options=["washing_machine", "dishwasher", "kettle", "coffee_maker", "custom"],
+                    translation_key="device_type",
                     mode=selector.SelectSelectorMode.DROPDOWN
                 )
             ),
@@ -151,9 +160,6 @@ class WattWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="state_names",
             data_schema=schema,
             errors=errors,
-            description_placeholders={
-                "note": "Durum isimlerini virgülle veya her satıra bir tane yazın. İlk durum başlangıç (otomatik >), son durum bitiş (otomatik <) olacak."
-            }
         )
 
     async def async_step_state_thresholds(
@@ -163,7 +169,6 @@ class WattWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
-            updated = True
             for i, state in enumerate(self.states):
                 th_key = f"threshold_{i}"
                 cmp_key = f"comparison_{i}"
@@ -191,45 +196,9 @@ class WattWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 self.config_data[CONF_STATES] = self.states
                 return await self.async_step_timing()
 
-        schema_dict = {}
-
-        for i, state in enumerate(self.states):
-            name = state[CONF_STATE_NAME]
-            is_start = i == 0
-            is_finish = i == len(self.states) - 1
-
-            schema_dict[vol.Optional(
-                f"header_{i}",
-                default=f"📊 {name} {'(Başlangıç - otomatik >)' if is_start else '(Bitiş - otomatik <)' if is_finish else ''}:"
-            )] = str
-
-            schema_dict[vol.Required(
-                f"threshold_{i}",
-                default=state.get(CONF_THRESHOLD, 0.0)
-            )] = vol.Coerce(float)
-
-            if not is_start and not is_finish:
-                schema_dict[vol.Required(
-                    f"comparison_{i}",
-                    default=state.get(CONF_COMPARISON, COMPARISON_GREATER)
-                )] = selector.SelectSelector(
-                    selector.SelectSelectorConfig(
-                        options=[
-                            {"value": COMPARISON_GREATER, "label": "Büyüktür (>)"},
-                            {"value": COMPARISON_LESS, "label": "Küçüktür (<)"},
-                        ],
-                        mode=selector.SelectSelectorMode.DROPDOWN
-                    )
-                )
-
-            schema_dict[vol.Optional(
-                f"icon_{i}",
-                default=state.get(CONF_ICON, "mdi:circle")
-            )] = str
-
         return self.async_show_form(
             step_id="state_thresholds",
-            data_schema=vol.Schema(schema_dict),
+            data_schema=_threshold_schema(self.states, _lang(self.hass)),
             errors=errors,
         )
 
@@ -285,14 +254,17 @@ class WattWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return WattWatcherOptionsFlowHandler()
 
 
-def _threshold_schema(states: List[Dict[str, Any]]) -> vol.Schema:
+def _threshold_schema(states: List[Dict[str, Any]], language: str = "en") -> vol.Schema:
     """Build the per-state threshold form (shared by setup and options)."""
     schema_dict: Dict[Any, Any] = {}
     for i, state in enumerate(states):
         name = state[CONF_STATE_NAME]
         is_start = i == 0
         is_finish = i == len(states) - 1
-        label = " (otomatik >)" if is_start else " (otomatik <)" if is_finish else ""
+        if language == "tr":
+            label = " (başlangıç, otomatik >)" if is_start else " (bitiş, otomatik <)" if is_finish else ""
+        else:
+            label = " (start, automatically >)" if is_start else " (finish, automatically <)" if is_finish else ""
 
         schema_dict[vol.Optional(f"header_{i}", default=f"📊 {name}{label}:")] = str
         schema_dict[vol.Required(
@@ -304,10 +276,8 @@ def _threshold_schema(states: List[Dict[str, Any]]) -> vol.Schema:
                 f"comparison_{i}", default=state.get(CONF_COMPARISON, COMPARISON_GREATER)
             )] = selector.SelectSelector(
                 selector.SelectSelectorConfig(
-                    options=[
-                        {"value": COMPARISON_GREATER, "label": "Büyüktür (>)"},
-                        {"value": COMPARISON_LESS, "label": "Küçüktür (<)"},
-                    ],
+                    options=[COMPARISON_GREATER, COMPARISON_LESS],
+                    translation_key="comparison",
                     mode=selector.SelectSelectorMode.DROPDOWN,
                 )
             )
@@ -391,7 +361,7 @@ class WattWatcherOptionsFlowHandler(config_entries.OptionsFlow):
             return await self.async_step_timing()
 
         return self.async_show_form(
-            step_id="state_thresholds", data_schema=_threshold_schema(self.states)
+            step_id="state_thresholds", data_schema=_threshold_schema(self.states, _lang(self.hass)),
         )
 
     async def async_step_timing(

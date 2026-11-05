@@ -57,7 +57,7 @@ class WattWatcherPowerSensor(WattWatcherEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_power"
-        self._attr_name = f"{coordinator.config.get('name')} Power"
+        self._attr_translation_key = "power"
 
     @property
     def native_value(self) -> float:
@@ -72,14 +72,11 @@ class WattWatcherStateSensor(WattWatcherEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_state"
-        self._attr_name = f"{coordinator.config.get('name')} Status"
+        self._attr_translation_key = "state"
         self._attr_device_class = SensorDeviceClass.ENUM
         
-        # KRİTİK DÜZELTME: Kullanıcının tanımladığı durumlar + "idle"
+        # The user's configured states plus the built-in "idle"
         self._attr_options = state_options + ["idle"]
-        
-        # İstersen "unknown" veya hata durumlarını da ekleyebilirsin:
-        # self._attr_options = state_options + ["idle", "unknown", "error"]
 
     @property
     def native_value(self) -> str:
@@ -130,7 +127,7 @@ class WattWatcherCycleDurationSensor(WattWatcherEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_cycle_duration"
-        self._attr_name = f"{coordinator.config.get('name')} Cycle Duration"
+        self._attr_translation_key = "cycle_duration"
 
     @property
     def native_value(self) -> int:
@@ -169,7 +166,7 @@ class WattWatcherEnergySensor(WattWatcherEntity, SensorEntity):
         """Initialize the sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_energy"
-        self._attr_name = f"{coordinator.config.get('name')} Energy"
+        self._attr_translation_key = "energy"
         self._energy_this_cycle = 0.0
         self._last_update_time = dt_util.utcnow()
         self._last_power = 0.0

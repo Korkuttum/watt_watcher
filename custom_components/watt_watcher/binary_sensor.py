@@ -45,13 +45,12 @@ class WattWatcherActiveSensor(WattWatcherEntity, BinarySensorEntity):
         """Initialize the binary sensor."""
         super().__init__(coordinator, entry)
         self._attr_unique_id = f"{entry.entry_id}_active"
-        self._attr_name = f"{coordinator.config.get('name')} Active"
+        self._attr_translation_key = "active"
 
     @property
     def is_on(self) -> bool:
         """Return true if device is active."""
-        # Sadece coordinator'ın is_active değerini döndür
-        # "bitti" durumu da aktif DEĞİL
+        # On only while a cycle is running; "finished" and "idle" are off.
         return self.coordinator.data.get("is_active", False)
     
     @property
@@ -60,9 +59,9 @@ class WattWatcherActiveSensor(WattWatcherEntity, BinarySensorEntity):
         timing = self.coordinator.data.get("timing_settings", {})
         timers = self.coordinator.data.get("timers", {})
         
-        # Kalan süreleri hesapla
+        # Remaining times
         current_state = self.coordinator.data.get("current_state", "idle")
-        bitti_duration = self.coordinator.data.get("bitti_duration", 0)
+        finished_duration = self.coordinator.data.get("finished_duration", 0)
         idle_remaining = self.coordinator.data.get("idle_remaining", 0)
         
         active_timer = timers.get("active_timer", 0)
@@ -72,16 +71,16 @@ class WattWatcherActiveSensor(WattWatcherEntity, BinarySensorEntity):
         finished_delay = timing.get("finished_delay", 300)
         idle_delay = timing.get("idle_delay", 3600)
         
-        # Kalan süreler
+        # Time left until each transition
         active_remaining = max(0, active_delay - active_timer) if active_timer < active_delay else 0
         finished_remaining = max(0, finished_delay - finished_timer) if finished_timer < finished_delay else 0
         
-        # Durum mesajı
-        status_message = "Hazır"
+        # Machine-readable status: ready / waiting / starting
+        status_message = "ready"
         if current_state == self.coordinator.finish_state_name:
-            status_message = f"Bekliyor ({idle_remaining}s)"
+            status_message = "waiting"
         elif not self.is_on and current_state != "idle":
-            status_message = f"Aktif oluyor ({active_remaining}s)"
+            status_message = "starting"
         
         return {
             "current_power": self.coordinator.data.get("current_power", 0.0),
@@ -92,9 +91,10 @@ class WattWatcherActiveSensor(WattWatcherEntity, BinarySensorEntity):
             "idle_delay": idle_delay,
             "active_timer": active_timer,
             "finished_timer": finished_timer,
-            "bitti_duration": bitti_duration,
-            "active_in": active_remaining,      # Aktif olmaya kalan süre
-            "finished_in": finished_remaining,  # Bitti olmaya kalan süre
-            "idle_in": idle_remaining,          # Idle olmaya kalan süre
+            "finished_duration": finished_duration,
+            "bitti_duration": finished_duration,  # deprecated alias
+            "active_in": active_remaining,      # seconds until active
+            "finished_in": finished_remaining,  # seconds until finished
+            "idle_in": idle_remaining,          # seconds until idle
             "resume_count": self.coordinator.data.get("resume_count", 0),
         }

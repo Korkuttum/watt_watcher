@@ -3,135 +3,141 @@
 <h1 align="center">Watt Watcher</h1>
 
 <p align="center">
-Akıllı prizin watt değerinden <b>çamaşır / bulaşık makinesi, su ısıtıcı, kahve makinesi</b> gibi cihazların
-durumunu (çalışıyor, bitti, boşta) çıkaran Home Assistant entegrasyonu.<br>
-<i>A Home Assistant integration that turns a smart plug's power reading into an appliance cycle tracker.</i>
+A Home Assistant integration that turns a smart plug's power reading into an appliance cycle tracker:<br>
+<b>washing machine, dishwasher, kettle, coffee maker</b> and anything else that draws power in phases.
+</p>
+
+<p align="center">
+<a href="README.tr.md">Türkçe</a> ·
+<a href="https://github.com/Korkuttum/watt_watcher/releases">Releases</a> ·
+<a href="LICENSE">MIT</a>
 </p>
 
 ---
 
-## Özellikler
+## Features
 
-- Herhangi bir **watt (W) sensöründen** çalışır. Bulut yok, tamamen yerel.
-- Durumları kendin tanımlarsın: ad, watt eşiği, büyük/küçük, ikon. İlk durum **başlangıç**, son durum **bitiş**.
-- **Duraklamaya dayanıklı:** Bulaşık makinesi yıkama arasında dakikalarca 0 W'a düşer. Bu duraklama
-  bitiş sayılırsa, makine tekrar ısındığında yeni bir "başladı" bildirimi gelir. Watt Watcher bunu
-  **aynı döngünün devamı** (`resumed`) olarak işler, yeni başlangıç saymaz.
-- **Sensör kopmasına dayanıklı:** Priz bir an `unavailable` olursa durum sıfırlanmaz.
-- **Yeniden başlatmaya dayanıklı:** Yıkama sırasında Home Assistant yeniden başlarsa durum korunur.
-- Her cihaz için: güç, durum, döngü süresi ve döngü enerjisi (Wh) sensörleri, bir de "aktif" binary sensörü.
-- Otomasyonlar için olaylar: `watt_watcher_started`, `_finished`, `_resumed`, `_idle`, `_state_changed`.
+- Works with **any power (W) sensor**. Fully local, no cloud.
+- Define your own states: name, watt threshold, greater/less, icon. The first state is the **start**, the last one is the **finish**.
+- **Pause-proof.** A dishwasher drops to 0 W for minutes between phases. If that counted as "finished",
+  the next heating phase would announce a brand new start. Watt Watcher treats a wake-up shortly after
+  "finished" as the **same cycle resuming** (`resumed`), not a new start.
+- **Survives sensor drop-outs.** A momentary `unavailable` from the plug does not reset the state.
+- **Survives restarts.** If Home Assistant restarts mid-cycle, the state is restored.
+- Per appliance: power, status, cycle duration and cycle energy (Wh) sensors, plus an "active" binary sensor.
+- Events for automations: `watt_watcher_started`, `_finished`, `_resumed`, `_idle`, `_state_changed`.
+- Available in **English and Turkish**. Other languages fall back to English.
 
-## Kurulum
+## Installation
 
-### HACS (önerilen)
-1. HACS → ⋮ → **Özel depolar** → `https://github.com/Korkuttum/watt_watcher` → kategori **Entegrasyon**.
-2. **Watt Watcher**'ı indir, Home Assistant'ı yeniden başlat.
-3. Ayarlar → Cihazlar ve Hizmetler → **Entegrasyon ekle** → *Watt Watcher*.
+### HACS
+1. HACS → ⋮ → **Custom repositories** → `https://github.com/Korkuttum/watt_watcher` → category **Integration**.
+2. Download **Watt Watcher** and restart Home Assistant.
+3. Settings → Devices & services → **Add integration** → *Watt Watcher*.
 
-### Elle
-Son sürümün `watt_watcher.zip` dosyasını [Releases](https://github.com/Korkuttum/watt_watcher/releases) sayfasından indir ve içindekileri `config/custom_components/watt_watcher/` içine aç. Ya da `custom_components/watt_watcher` klasörünü Home Assistant'ın `config/custom_components/` içine kopyala ve yeniden başlat.
+### Manual
+Download `watt_watcher.zip` from the latest [release](https://github.com/Korkuttum/watt_watcher/releases),
+unpack it into `config/custom_components/watt_watcher/` and restart Home Assistant. Or copy the
+`custom_components/watt_watcher` folder from this repository.
 
-## Zamanlamalar
+## Setup
 
-| Ayar | Anlamı | Öneri |
+1. Pick a name, the power sensor and the device type.
+2. Edit the state names (one per line). The last one is the finish state.
+3. Set a watt threshold, comparison and icon for each state.
+4. Adjust the timings (below).
+
+Everything can be changed later under **Configure** on the integration card.
+
+## Timings
+
+| Setting | Meaning | Suggestion |
 |---|---|---|
-| **Başlama gecikmesi** (`active_delay`) | Güç eşiğin üstünde bu kadar kalırsa döngü başlar | 60 sn |
-| **Bitiş gecikmesi** (`finished_delay`) | Güç bu kadar düşük kalırsa döngü biter | çamaşır 300 sn, bulaşık 600 sn |
-| **Boşta gecikmesi** (`idle_delay`) | "Bitti" durumunun ne kadar gösterileceği | 3600 sn |
-| **Devam etme penceresi** (`resume_window`) | Bittikten sonra bu süre içinde güç dönerse yeni başlangıç değil, devam sayılır. `0` = kapalı | 1800 sn |
+| **Start delay** (`active_delay`) | Power must stay above the threshold this long before a cycle starts | 60 s |
+| **Finish delay** (`finished_delay`) | Power must stay low this long before the cycle finishes | washer 300 s, dishwasher 600 s |
+| **Idle delay** (`idle_delay`) | How long the "finished" state is shown before going idle | 3600 s |
+| **Resume window** (`resume_window`) | If power returns this soon after finishing, it is the same cycle resuming, not a new start. `0` = off | 1800 s |
 
-> **Bitiş gecikmesi nasıl seçilir?** Cihazın en uzun duraklamasından biraz uzun olsun. Güç geçmişine bak
-> ve en uzun düşük-güç aralığını bul. Daha kısa seçersen duraklamada da "bitti" olayı gelir, ama
-> `resume_window` sayesinde bunu izleyen ısınma yeni bir başlangıç sayılmaz.
-> "Bitti" olaylarının hepsini istemiyorsan `finished_delay`'i duraklamalardan uzun tut.
+> **Choosing the finish delay.** Make it a little longer than the appliance's longest pause. Look at the
+> power history and find the longest low-power gap. If you pick something shorter, a "finished" event is also
+> sent during a pause, but thanks to `resume_window` the heating that follows is not announced as a new start.
+> If you do not want those extra "finished" events, keep `finished_delay` above the pauses.
 
-`resume_window` ayarı etkinken "bitti" durumu en az o süre kadar tutulur (`max(idle_delay, resume_window)`).
+While `resume_window` is active, the "finished" state is kept at least that long (`max(idle_delay, resume_window)`).
 
-## Varlıklar
+## Entities
 
-Her cihaz için (adı `Bulaşık Makinesi` ise):
+For an appliance called `Dishwasher`:
 
-| Varlık | Açıklama |
+| Entity | Description |
 |---|---|
-| `sensor.bulasik_makinesi_power` | Anlık güç (W) |
-| `sensor.bulasik_makinesi_status` | Durum (tanımladığın durumlar + `idle`) |
-| `sensor.bulasik_makinesi_cycle_duration` | Döngü süresi (dk) |
-| `sensor.bulasik_makinesi_energy` | Döngüde harcanan enerji (Wh) |
-| `binary_sensor.bulasik_makinesi_active` | Döngü sürüyor mu (bitti/idle iken kapalı) |
+| `sensor.dishwasher_power` | Current power (W) |
+| `sensor.dishwasher_status` | Status (your states + `idle`) |
+| `sensor.dishwasher_cycle_duration` | Cycle duration (min) |
+| `sensor.dishwasher_cycle_energy` | Energy used in the cycle (Wh) |
+| `binary_sensor.dishwasher_active` | On while a cycle is running (off when finished or idle) |
 
-## Olaylar
+## Events
 
-| Olay | Ne zaman |
+| Event | When |
 |---|---|
-| `watt_watcher_started` | Yeni bir döngü başladı (`idle` → aktif). **"Başladı" bildirimi için bunu kullan.** |
-| `watt_watcher_finished` | Döngü bitti |
-| `watt_watcher_resumed` | "Bitti" görünen cihaz tekrar çalıştı (aynı döngü) |
-| `watt_watcher_idle` | Döngü kapandı, cihaz boşta |
-| `watt_watcher_state_changed` | Her durum değişimi |
+| `watt_watcher_started` | A new cycle started (`idle` → active). **Use this for "started" notifications.** |
+| `watt_watcher_finished` | The cycle finished |
+| `watt_watcher_resumed` | An appliance that looked finished woke up again (same cycle) |
+| `watt_watcher_idle` | The cycle is closed, the appliance is idle |
+| `watt_watcher_state_changed` | Every state change |
 
-Olay verisi: `name`, `entry_id`, `from`, `to`, `power`, `cycle_duration` (sn), `resume_count`.
+Event data: `name`, `entry_id`, `from`, `to`, `power`, `cycle_duration` (seconds), `resume_count`.
 
-### Örnek otomasyon
+### Example automation
 
 ```yaml
-alias: Bulaşık makinesi bildirimleri
+alias: Dishwasher notifications
 triggers:
   - trigger: event
     event_type: watt_watcher_started
-    event_data: { name: Bulaşık Makinesi }
+    event_data: { name: Dishwasher }
     id: started
   - trigger: event
     event_type: watt_watcher_finished
-    event_data: { name: Bulaşık Makinesi }
+    event_data: { name: Dishwasher }
     id: finished
 actions:
-  - action: notify.mobile_app_telefonum
+  - action: notify.mobile_app_my_phone
     data:
-      title: Bulaşık makinesi
+      title: Dishwasher
       message: >
-        {{ 'Yıkama başladı.' if trigger.id == 'started' else 'Yıkama tamamlandı.' }}
+        {{ 'The wash has started.' if trigger.id == 'started' else 'The wash is done.' }}
 ```
 
-Olay yerine varlık tetikleyicisi kullanmak istersen durum sensöründe `from: idle` kullan, böylece devam
-etmeler (`bitti` → `yıkıyor`) tetiklemez:
+If you prefer an entity trigger, use `from: idle` on the status sensor so that resumes
+(`finished` → `washing`) do not fire it:
 
 ```yaml
 triggers:
   - trigger: state
-    entity_id: sensor.bulasik_makinesi_status
+    entity_id: sensor.dishwasher_status
     from: idle
 ```
 
-## Sorun giderme
+## Troubleshooting
 
-- **Hâlâ tekrar tekrar "başladı" geliyor:** Otomasyonun `binary_sensor …_active → on` ile tetiklenmediğinden
-  emin ol. Duraklamadan sonra bu sensör de açılır. Yukarıdaki olay ya da `from: idle` tetikleyicisini kullan.
-- **Bitiş çok geç geliyor:** `finished_delay`'i kısalt, ama duraklamaların altına düşme.
-- **Ayrıntılı günlük:**
+- **Still getting repeated "started" notifications:** make sure the automation is not triggered by
+  `binary_sensor …_active → on`. That sensor also turns on after a pause. Use the event above or `from: idle`.
+- **The finish notification comes too late:** lower `finished_delay`, but not below the appliance's pauses.
+- **Debug log:**
   ```yaml
   logger:
     logs:
       custom_components.watt_watcher: debug
   ```
 
-## Geliştirme
+## Development
 
 ```bash
-python3 tests/test_state_machine.py   # Home Assistant gerekmez
+python3 tests/test_state_machine.py   # no Home Assistant needed
 ```
 
-## Lisans
+## License
 
 [MIT](LICENSE)
-
----
-
-## English summary
-
-Watt Watcher tracks an appliance's cycle from any power sensor: configurable states and thresholds,
-debounce timers, per-cycle energy, and bus events. It treats a wake-up shortly after "finished" as the
-**same cycle resuming** (`watt_watcher_resumed`) instead of a new start, ignores `unavailable` power
-readings, and survives Home Assistant restarts. Install through HACS as a custom repository, add the
-integration from *Settings → Devices & Services*, and use the `watt_watcher_started` /
-`watt_watcher_finished` events (see the example above) for notifications. Licensed under MIT.

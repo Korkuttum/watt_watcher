@@ -12,7 +12,7 @@
       },
       "state_names": {
         "title": "Durumlar",
-        "description": "İlk durum başlangıç, son durum bitiş olur.",
+        "description": "Her satıra bir durum adı yazın. İlk durum başlangıç (güç eşiğin üstünde), son durum bitiş (güç eşiğin altında) olur.",
         "data": {
           "state_names": "Durum adları"
         }
@@ -51,7 +51,7 @@
     "step": {
       "state_names": {
         "title": "Durumlar",
-        "description": "İlk durum başlangıç, son durum bitiş olur.",
+        "description": "Her satıra bir durum adı yazın. İlk durum başlangıç (güç eşiğin üstünde), son durum bitiş (güç eşiğin altında) olur.",
         "data": {
           "state_names": "Durum adları"
         }
@@ -81,6 +81,44 @@
     "error": {
       "en_az_iki_durum_gerekli": "En az iki durum gerekli.",
       "gecersiz_sayi": "Geçersiz sayı."
+    }
+  },
+  "selector": {
+    "device_type": {
+      "options": {
+        "washing_machine": "Çamaşır makinesi",
+        "dishwasher": "Bulaşık makinesi",
+        "kettle": "Su ısıtıcı",
+        "coffee_maker": "Kahve makinesi",
+        "custom": "Özel cihaz"
+      }
+    },
+    "comparison": {
+      "options": {
+        "greater": "Büyüktür (>)",
+        "less": "Küçüktür (<)"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "power": {
+        "name": "Güç"
+      },
+      "state": {
+        "name": "Durum"
+      },
+      "cycle_duration": {
+        "name": "Döngü süresi"
+      },
+      "energy": {
+        "name": "Döngü enerjisi"
+      }
+    },
+    "binary_sensor": {
+      "active": {
+        "name": "Aktif"
+      }
     }
   }
 }
