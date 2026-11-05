@@ -1,4 +1,5 @@
 {
   "name": "Watt Watcher",
-  "homeassistant": "2023.1.0"
+  "homeassistant": "2023.8.0",
+  "render_readme": true
 }

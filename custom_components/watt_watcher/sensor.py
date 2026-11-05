@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime
 from typing import Any
 
 from homeassistant.components.sensor import (
@@ -14,6 +13,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import UnitOfPower, UnitOfEnergy, UnitOfTime
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import dt as dt_util
 
 from .const import DOMAIN
 from .coordinator import WattWatcherCoordinator
@@ -112,6 +112,9 @@ class WattWatcherStateSensor(WattWatcherEntity, SensorEntity):
             "active_delay": timing.get("active_delay", 60),
             "finished_delay": timing.get("finished_delay", 300),
             "idle_delay": timing.get("idle_delay", 3600),
+            "resume_window": timing.get("resume_window", 0),
+            "resume_count": self.coordinator.data.get("resume_count", 0),
+            "power_available": self.coordinator.data.get("power_available", True),
             "configured_states": formatted_states,
         }
 
@@ -168,23 +171,20 @@ class WattWatcherEnergySensor(WattWatcherEntity, SensorEntity):
         self._attr_unique_id = f"{entry.entry_id}_energy"
         self._attr_name = f"{coordinator.config.get('name')} Energy"
         self._energy_this_cycle = 0.0
-        self._last_update_time = datetime.now()
+        self._last_update_time = dt_util.utcnow()
         self._last_power = 0.0
         
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
         await super().async_added_to_hass()
-        self._last_update_time = datetime.now()
+        self._last_update_time = dt_util.utcnow()
         self._last_power = self.coordinator.data.get("current_power", 0.0)
         
-        self.async_on_remove(
-            self.coordinator.async_add_listener(self._handle_coordinator_update)
-        )
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        now = datetime.now()
+        now = dt_util.utcnow()
         time_diff = (now - self._last_update_time).total_seconds()
         
         current_power = self.coordinator.data.get("current_power", 0.0)

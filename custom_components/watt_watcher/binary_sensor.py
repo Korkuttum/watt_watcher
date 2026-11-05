@@ -78,7 +78,7 @@ class WattWatcherActiveSensor(WattWatcherEntity, BinarySensorEntity):
         
         # Durum mesajı
         status_message = "Hazır"
-        if current_state == "bitti":
+        if current_state == self.coordinator.finish_state_name:
             status_message = f"Bekliyor ({idle_remaining}s)"
         elif not self.is_on and current_state != "idle":
             status_message = f"Aktif oluyor ({active_remaining}s)"
@@ -96,4 +96,5 @@ class WattWatcherActiveSensor(WattWatcherEntity, BinarySensorEntity):
             "active_in": active_remaining,      # Aktif olmaya kalan süre
             "finished_in": finished_remaining,  # Bitti olmaya kalan süre
             "idle_in": idle_remaining,          # Idle olmaya kalan süre
+            "resume_count": self.coordinator.data.get("resume_count", 0),
         }

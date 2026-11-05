@@ -1,0 +1,86 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Watt Watcher",
+        "description": "Pick the appliance and its power (W) sensor.",
+        "data": {
+          "name": "Name",
+          "power_sensor": "Power sensor",
+          "device_type": "Device type"
+        }
+      },
+      "state_names": {
+        "title": "States",
+        "description": "The first state is the start, the last one is the finish.",
+        "data": {
+          "state_names": "State names"
+        }
+      },
+      "state_thresholds": {
+        "title": "Thresholds",
+        "description": "Set the watt threshold for each state."
+      },
+      "timing": {
+        "title": "Timing",
+        "data": {
+          "active_delay": "Start delay (s)",
+          "finished_delay": "Finish delay (s)",
+          "idle_delay": "Idle delay (s)",
+          "resume_window": "Resume window (s)",
+          "scan_interval": "Scan interval (s)"
+        },
+        "data_description": {
+          "active_delay": "Power must stay above the threshold this long before a cycle starts.",
+          "finished_delay": "Power must stay low this long before the cycle finishes. Pick something longer than the appliance's pauses between phases.",
+          "idle_delay": "How long the finished state is shown before going idle.",
+          "resume_window": "If power returns within this time after finishing, it counts as the same cycle resuming, not a new start. 0 = off.",
+          "scan_interval": "How often the power sensor is read."
+        }
+      }
+    },
+    "abort": {
+      "already_configured": "This power sensor is already being watched."
+    },
+    "error": {
+      "en_az_iki_durum_gerekli": "At least two states are required.",
+      "gecersiz_sayi": "Invalid number."
+    }
+  },
+  "options": {
+    "step": {
+      "state_names": {
+        "title": "States",
+        "description": "The first state is the start, the last one is the finish.",
+        "data": {
+          "state_names": "State names"
+        }
+      },
+      "state_thresholds": {
+        "title": "Thresholds",
+        "description": "Set the watt threshold for each state."
+      },
+      "timing": {
+        "title": "Timing",
+        "data": {
+          "active_delay": "Start delay (s)",
+          "finished_delay": "Finish delay (s)",
+          "idle_delay": "Idle delay (s)",
+          "resume_window": "Resume window (s)",
+          "scan_interval": "Scan interval (s)"
+        },
+        "data_description": {
+          "active_delay": "Power must stay above the threshold this long before a cycle starts.",
+          "finished_delay": "Power must stay low this long before the cycle finishes. Pick something longer than the appliance's pauses between phases.",
+          "idle_delay": "How long the finished state is shown before going idle.",
+          "resume_window": "If power returns within this time after finishing, it counts as the same cycle resuming, not a new start. 0 = off.",
+          "scan_interval": "How often the power sensor is read."
+        }
+      }
+    },
+    "error": {
+      "en_az_iki_durum_gerekli": "At least two states are required.",
+      "gecersiz_sayi": "Invalid number."
+    }
+  }
+}

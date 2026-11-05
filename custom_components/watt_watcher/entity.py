@@ -5,7 +5,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity import DeviceInfo, Entity
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import DOMAIN, VERSION
 from .coordinator import WattWatcherCoordinator
 
 
@@ -22,14 +22,10 @@ class WattWatcherEntity(CoordinatorEntity[WattWatcherCoordinator], Entity):
             name=coordinator.config.get("name", "Appliance"),
             manufacturer="Watt Watcher",
             model="Power Monitor",
-            sw_version="1.0.0",
+            sw_version=VERSION,
         )
     
     @property
     def available(self) -> bool:
-        """Entity available mı? Error dışında genelde evet."""
-        if self.coordinator.last_update_success is False:
-            return False
-        if self.coordinator.data is None:
-            return False
-        return self.coordinator.data.get("current_state") != "error"
+        """Entities stay available while the coordinator has data."""
+        return self.coordinator.last_update_success and self.coordinator.data is not None

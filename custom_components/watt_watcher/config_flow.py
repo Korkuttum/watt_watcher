@@ -24,6 +24,9 @@ from .const import (
     CONF_ACTIVE_DELAY,
     CONF_FINISHED_DELAY,
     CONF_IDLE_DELAY,
+    CONF_RESUME_WINDOW,
+    DEFAULT_RESUME_WINDOW,
+    DEVICE_TYPE_TIMINGS,
     DEFAULT_NAME,
     DEFAULT_DEVICE_TYPE,
     DEFAULT_ACTIVE_DELAY,
@@ -239,6 +242,7 @@ class WattWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 CONF_ACTIVE_DELAY: user_input[CONF_ACTIVE_DELAY],
                 CONF_FINISHED_DELAY: user_input[CONF_FINISHED_DELAY],
                 CONF_IDLE_DELAY: user_input[CONF_IDLE_DELAY],
+                CONF_RESUME_WINDOW: user_input[CONF_RESUME_WINDOW],
                 "scan_interval": user_input.get("scan_interval", 10),
             })
             return self.async_create_entry(
@@ -246,13 +250,20 @@ class WattWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 data=self.config_data
             )
 
+        suggested = DEVICE_TYPE_TIMINGS.get(
+            self.config_data.get(CONF_DEVICE_TYPE, DEFAULT_DEVICE_TYPE), {}
+        )
         schema = vol.Schema({
             vol.Required(CONF_ACTIVE_DELAY, default=DEFAULT_ACTIVE_DELAY): 
                 vol.All(vol.Coerce(int), vol.Range(min=10, max=600)),
-            vol.Required(CONF_FINISHED_DELAY, default=DEFAULT_FINISHED_DELAY): 
-                vol.All(vol.Coerce(int), vol.Range(min=60, max=1800)),
+            vol.Required(
+                CONF_FINISHED_DELAY,
+                default=suggested.get("finished_delay", DEFAULT_FINISHED_DELAY),
+            ): vol.All(vol.Coerce(int), vol.Range(min=30, max=1800)),
             vol.Required(CONF_IDLE_DELAY, default=DEFAULT_IDLE_DELAY): 
                 vol.All(vol.Coerce(int), vol.Range(min=60, max=7200)),
+            vol.Required(CONF_RESUME_WINDOW, default=DEFAULT_RESUME_WINDOW): 
+                vol.All(vol.Coerce(int), vol.Range(min=0, max=7200)),
             vol.Optional("scan_interval", default=10): 
                 vol.All(vol.Coerce(int), vol.Range(min=5, max=60)),
         })
@@ -426,6 +437,7 @@ class WattWatcherOptionsFlowHandler(config_entries.OptionsFlow):
                 CONF_ACTIVE_DELAY: user_input[CONF_ACTIVE_DELAY],
                 CONF_FINISHED_DELAY: user_input[CONF_FINISHED_DELAY],
                 CONF_IDLE_DELAY: user_input[CONF_IDLE_DELAY],
+                CONF_RESUME_WINDOW: user_input[CONF_RESUME_WINDOW],
                 "scan_interval": user_input.get("scan_interval", 10),
             }
             self.hass.config_entries.async_update_entry(
@@ -439,9 +451,11 @@ class WattWatcherOptionsFlowHandler(config_entries.OptionsFlow):
             vol.Required(CONF_ACTIVE_DELAY, default=data.get(CONF_ACTIVE_DELAY, DEFAULT_ACTIVE_DELAY)): 
                 vol.All(vol.Coerce(int), vol.Range(min=10, max=600)),
             vol.Required(CONF_FINISHED_DELAY, default=data.get(CONF_FINISHED_DELAY, DEFAULT_FINISHED_DELAY)): 
-                vol.All(vol.Coerce(int), vol.Range(min=60, max=1800)),
+                vol.All(vol.Coerce(int), vol.Range(min=30, max=1800)),
             vol.Required(CONF_IDLE_DELAY, default=data.get(CONF_IDLE_DELAY, DEFAULT_IDLE_DELAY)): 
                 vol.All(vol.Coerce(int), vol.Range(min=60, max=7200)),
+            vol.Required(CONF_RESUME_WINDOW, default=data.get(CONF_RESUME_WINDOW, DEFAULT_RESUME_WINDOW)): 
+                vol.All(vol.Coerce(int), vol.Range(min=0, max=7200)),
             vol.Optional("scan_interval", default=data.get("scan_interval", 10)): 
                 vol.All(vol.Coerce(int), vol.Range(min=5, max=60)),
         })
